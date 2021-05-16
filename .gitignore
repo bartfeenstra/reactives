@@ -1,0 +1,9 @@
+# Build artifacts.
+/.tox
+/reactives.egg-info
+/build
+/dist
+*.pyc
+
+# Test artifacts.
+/.coverage
