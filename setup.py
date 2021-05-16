@@ -56,6 +56,12 @@ SETUP = {
             'VERSION',
         ])
     ],
+    'package_data': {
+        'betty': [
+            # Include the test API.
+            os.path.join(os.path.dirname(__file__), 'reactives', 'tests', '__init__.py'),
+         ]
+    },
 }
 
 if __name__ == '__main__':
