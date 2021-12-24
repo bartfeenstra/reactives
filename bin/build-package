@@ -8,6 +8,6 @@ cd "$(dirname "$0")/.."
 rm -rf reactives.egg-info build dist
 
 # Build the package.
-python setup.py sdist
-python setup.py bdist_wheel --universal
+python3 setup.py sdist
+python3 setup.py bdist_wheel --universal
 twine check ./dist/*
