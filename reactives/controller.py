@@ -1,3 +1,4 @@
+import copy
 import inspect
 import weakref
 from collections import deque
@@ -9,7 +10,7 @@ try:
     from graphlib import TopologicalSorter
 except ImportError:
     from graphlib_backport import TopologicalSorter
-from typing import Callable, Sequence, Tuple, Optional, Dict, Set
+from typing import Callable, Sequence, Tuple, Optional, Dict, Set, Any
 
 
 class ReactorController:
@@ -22,8 +23,31 @@ class ReactorController:
     def __init__(self):
         self._reactors = []
 
-    def __call__(self, *args, **kwargs):
-        self.react(*args, **kwargs)
+    def __call__(self, *args):
+        self.react(*args)
+
+    def __copy__(self) -> 'ReactorController':
+        copied = self.__class__.__new__(self.__class__)
+        copied._reactors = copy.copy(self._reactors)
+        return copied
+
+    def __deepcopy__(self, memo: Dict) -> 'ReactorController':
+        copied = self.__class__.__new__(self.__class__)
+        memo[id(self)] = copied
+        copied._reactors = copy.deepcopy(self._reactors, memo)
+        return copied
+
+    def __getstate__(self) -> Dict[str, Any]:
+        return {
+            '_reactors': self._reactors,
+        }
+
+    def __setstate__(self, state: Dict[str, Any]) -> None:
+        self._reactors = state['_reactors']
+
+    @property
+    def reactors(self) -> Sequence[Reactor]:
+        return [*self._reactors]
 
     def trigger(self) -> None:
         if ReactorController._trigger_suspended:
@@ -42,21 +66,16 @@ class ReactorController:
         for reactor in self._reactors:
             for source_reactor, target_reactor in self._expand_reactor(None, reactor):
                 if target_reactor not in ReactorController._chain_reactor_graph:
-                    ReactorController._chain_reactor_graph[target_reactor] = set(
-                    )
+                    ReactorController._chain_reactor_graph[target_reactor] = set()
                 if source_reactor is not None:
-                    ReactorController._chain_reactor_graph[target_reactor].add(
-                        source_reactor)
+                    ReactorController._chain_reactor_graph[target_reactor].add(source_reactor)
 
-        ReactorController._chain_reactors = deque(TopologicalSorter(
-            ReactorController._chain_reactor_graph).static_order())
+        ReactorController._chain_reactors = deque(TopologicalSorter(ReactorController._chain_reactor_graph).static_order())
 
     def _expand_reactor(self, caller: Optional[Reactor], reactor: ReactorDefinition) -> Sequence[Tuple[Optional[Reactor], Reactor]]:
-        from reactives import is_reactive
+        from reactives.checks import is_reactive
 
-        # weakref.proxy is not hashable, so we use weakref.ref and dereference it ourselves.
-        if isinstance(reactor, weakref.ref):
-            reactor = reactor()
+        reactor = self._unweakref(reactor)
 
         if is_reactive(reactor):
             yield caller, reactor.react.trigger
@@ -92,6 +111,12 @@ class ReactorController:
         # weakref.proxy is not hashable, so we use weakref.ref and dereference it ourselves.
         return weakref.ref(target, *args, **kwargs)
 
+    def _unweakref(self, reference: Any) -> Any:
+        # weakref.proxy is not hashable, so we use weakref.ref and dereference it ourselves.
+        if isinstance(reference, weakref.ref):
+            return reference()
+        return reference
+
     @classmethod
     @contextmanager
     def suspend(cls) -> None:
@@ -105,8 +130,19 @@ class ReactorController:
             self._reactors.append(reactor)
 
     def shutdown(self, *reactors: ReactorDefinition) -> None:
-        for reactor in reactors:
-            self._reactors.remove(reactor)
+        from reactives import scope
+
+        if not reactors:
+            self._reactors.clear()
+            return
+
+        with scope.suspend():
+            # This is identical to self._reactors.remove(reactor), but we resolve weakrefs first.
+            # To prevent the list from reindexing the values we still have to remove, compare reactors in reverse.
+            for i, self_reactor in reversed(list(enumerate(map(self._unweakref, self._reactors)))):
+                for reactor in reactors:
+                    if reactor == self_reactor:
+                        del self._reactors[i]
 
     def react_weakref(self, *reactors: ReactorDefinition) -> None:
         """
@@ -119,7 +155,3 @@ class ReactorController:
         """
         for reactor in reactors:
             self.react(self._weakref(reactor, self._reactors.remove))
-
-    def shutdown_weakref(self, *reactors: ReactorDefinition) -> None:
-        for reactor in reactors:
-            self.shutdown(self._weakref(reactor, self._reactors.remove))

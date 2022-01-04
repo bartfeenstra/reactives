@@ -1,5 +1,5 @@
+import copy
 from contextlib import suppress
-from copy import copy
 from typing import Any, Iterable
 
 from reactives import scope
@@ -13,6 +13,12 @@ class ReactiveDict(dict):
         super().__init__(*args, **kwargs)
         for value in dict.values(self):
             self._wire(value)
+
+    def __copy__(self) -> 'ReactiveDict':
+        copied = self.__class__(self)
+        copied.react = ReactorController()
+        copied.react.react(*self.react.reactors)
+        return copied
 
     def _wire(self, value) -> None:
         if is_reactive(value):
@@ -101,6 +107,7 @@ class ReactiveDict(dict):
     def __ne__(self, other):
         return super().__ne__(other)
 
+    # dict.__reversed__() was added in Python 3.7.
     if hasattr(dict, '__reversed__'):
         @scope.register_self
         def __reversed__(self):
@@ -109,7 +116,9 @@ class ReactiveDict(dict):
     def __setitem__(self, key, value):
         super().__setitem__(key, value)
         self._wire(value)
-        self.react.trigger()
+        # The reactor controller is not set in dict.__reduce__().
+        with suppress(AttributeError):
+            self.react.trigger()
 
     @scope.register_self
     def __sizeof__(self):
@@ -122,6 +131,12 @@ class ReactiveList(list):
         super().__init__(*args, **kwargs)
         for value in list.__iter__(self):
             self._wire(value)
+
+    def __copy__(self) -> 'ReactiveList':
+        copied = self.__class__(self)
+        scope.register(copied)
+        copied.react = copy.copy(self.react)
+        return copied
 
     def _wire(self, value) -> None:
         if is_reactive(value):
@@ -144,7 +159,7 @@ class ReactiveList(list):
 
     @scope.register_self
     def copy(self) -> 'ReactiveList':
-        return copy(self)
+        return copy.copy(self)
 
     @scope.register_self
     def count(self, value) -> int:
@@ -154,7 +169,9 @@ class ReactiveList(list):
         for value in other:
             super().append(value)
             self._wire(value)
-        self.react.trigger()
+        # The reactor controller is not set in list.__reduce__().
+        with suppress(AttributeError):
+            self.react.trigger()
 
     @scope.register_self
     def index(self, value, *args, **kwargs) -> int:

@@ -1,5 +1,5 @@
 import functools
-from typing import Optional, Callable
+from typing import Callable, Optional, Dict, Any
 
 from reactives import scope, ReactorController, assert_reactive, Reactive, reactive_factory
 from reactives.factory.type import InstanceAttribute
@@ -12,10 +12,30 @@ class _FunctionReactorController(ReactorController):
         self._on_trigger_call = on_trigger_call
         self._dependencies = []
 
+    def __getstate__(self) -> Dict[str, Any]:
+        state = super().__getstate__()
+        state['_on_trigger_call'] = self._on_trigger_call
+        state['_dependencies'] = self._dependencies
+        return state
+
+    def __setstate__(self, state: Dict[str, Any]) -> None:
+        super().__setstate__(state)
+        self._on_trigger_call = state['_on_trigger_call']
+        self._dependencies = state['_dependencies']
+
     def trigger(self) -> None:
         if self._on_trigger_call is not None:
             self._on_trigger_call()
         super().trigger()
+
+
+class _InstanceAttributeOnTrigger:
+    def __init__(self, reactive_method: '_ReactiveFunction', instance):
+        self._reactive_method = reactive_method
+        self._instance = instance
+
+    def __call__(self):
+        self._reactive_method._call(self._instance.react.getattr(self._reactive_method), self._instance)
 
 
 class _ReactiveFunction(InstanceAttribute):
@@ -28,9 +48,7 @@ class _ReactiveFunction(InstanceAttribute):
 
     def create_instance_attribute_reactor_controller(self, instance) -> ReactorController:
         return _FunctionReactorController(
-            lambda *args, **kwargs: self._call(instance.react.getattr(self), instance, *args, **kwargs)
-            if self._on_trigger_call
-            else None,
+            _InstanceAttributeOnTrigger(self, instance) if self._on_trigger_call else None,
         )
 
     def __get__(self, instance, owner):
@@ -42,6 +60,7 @@ class _ReactiveFunction(InstanceAttribute):
             reactive_instance_attribute = instance.react.getattr(self)
             with scope.collect(reactive_instance_attribute, reactive_instance_attribute.react._dependencies):
                 return self._decorated_function(instance, *args, **kwargs)
+        functools.update_wrapper(call, self)
 
         return call
 

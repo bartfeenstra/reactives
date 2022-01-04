@@ -1,7 +1,25 @@
+import pickle
 from unittest import TestCase
 
 from reactives import reactive
-from reactives.tests import assert_reactor_called
+from reactives.tests import assert_reactor_called, assert_not_reactor_called
+
+
+class ReactiveFunctionControllerTest(TestCase):
+    @reactive
+    class _Reactive:
+        @reactive
+        def subject(self) -> None:
+            pass
+
+    def test___getstate__(self) -> None:
+        subject = self._Reactive()
+        # Call the function so the instance can lazily instantiate the reactor controller we are testing here.
+        subject.subject()
+        unpickled_subject = pickle.loads(pickle.dumps(subject))
+        with assert_not_reactor_called(subject):
+            with assert_reactor_called(unpickled_subject):
+                unpickled_subject.react.getattr('subject').react.trigger()
 
 
 class ReactiveFunctionTest(TestCase):

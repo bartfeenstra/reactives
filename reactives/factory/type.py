@@ -1,7 +1,12 @@
+import copy
+import functools
 import inspect
-from typing import Type
+from contextlib import suppress
+from typing import Dict, Any, Type
 
-from reactives import ReactorController, Reactive, is_reactive, reactive_factory
+from reactives.controller import ReactorController
+from reactives.factory import reactive_factory
+from reactives.typing import Reactive
 
 
 class InstanceAttribute:
@@ -18,34 +23,80 @@ class _InstanceReactorController(ReactorController):
     def __init__(self, instance):
         super().__init__()
         self._instance = instance
+        self._reactive_attributes: Dict[Any, _ReactiveInstanceAttribute] = {}
+        self._initialized = False
+
+    def copy_for_instance(self, instance: Any):
+        copied = copy.copy(self)
+        copied._instance = instance
+        self._rewire_to_copy(copied)
+        return copied
+
+    def _rewire_to_copy(self, copied: '_InstanceReactorController') -> None:
+        for reactive_attr_name, reactive_attribute in copied._reactive_attributes.items():
+            with suppress(ValueError):
+                copied._reactive_attributes[reactive_attr_name].react.shutdown(self._instance)
+            copied._reactive_attributes[reactive_attr_name].react(copied._instance)
+
+    def __copy__(self) -> ReactorController:
+        self._initialize_reactive_instance_attributes()
+        copied = super().__copy__()
+        copied._instance = self._instance
+        copied._reactive_attributes = {}
+        for reactive_attr_name, reactive_attribute in self._reactive_attributes.items():
+            copied._reactive_attributes[reactive_attr_name] = copy.copy(reactive_attribute)
+        copied._initialized = False
+        return copied
+
+    def _initialize_reactive_instance_attributes(self) -> None:
+        if self._initialized:
+            return
+        self._initialized = True
+
+        for reactive_attr_name, reactive_attr_value in inspect.getmembers(self._instance.__class__, lambda x: isinstance(x, InstanceAttribute)):
+            self._initialize_reactive_attribute(reactive_attr_name, reactive_attr_value)
+
+    def _initialize_reactive_attribute(self, reactive_attr_name: str, reactive_attr_value: Any) -> None:
+        if reactive_attr_name in self._reactive_attributes:
+            # When pickling or copying, reactive attributes with non-string keys are omitted. We must recover those
+            # here.
+            self._reactive_attributes[reactive_attr_value] = self._reactive_attributes[reactive_attr_name]
+            return
+
+        reactor_controller = reactive_attr_value.create_instance_attribute_reactor_controller(self._instance)
+        reactive_attribute = _ReactiveInstanceAttribute(reactor_controller)
+        reactive_attribute.react(self._instance)
+        # Store reactive attributes by name as well as their original value, as we need access through both.
+        self._reactive_attributes[reactive_attr_name] = self._reactive_attributes[reactive_attr_value] = reactive_attribute
+
+    def __getstate__(self) -> Dict[str, Any]:
+        state = super().__getstate__()
+        state['_instance'] = self._instance
+        state['_reactive_attributes'] = {
+            reactive_attr_name: reactive_attribute
+            for reactive_attr_name, reactive_attribute in self._reactive_attributes.items()
+            # Filter out reactive attributes set by value, and keep those set by attribute name. The value keys will be
+            # restored upon unpickling.
+            if isinstance(reactive_attr_name, str)
+        }
+        return state
+
+    def __setstate__(self, state: Dict[str, Any]) -> None:
+        super().__setstate__(state)
+        self._instance = state['_instance']
         self._reactive_attributes = {}
+        self._reactive_attributes = state['_reactive_attributes']
+        self._initialized = False
 
-        # Initialize each reactive instance attribute and autowire it. Get the attributes through the class, though, so
-        # we can get the actual descriptors.
-        for name, attribute in inspect.getmembers(instance.__class__, self._is_reactive_instance_attribute):
-            assert isinstance(attribute, InstanceAttribute)
-            reactor_controller = attribute.create_instance_attribute_reactor_controller(instance)
-            reactive_attribute = _ReactiveInstanceAttribute(reactor_controller)
-            reactive_attribute.react(instance)
-            self._reactive_attributes[name] = self._reactive_attributes[attribute] = reactive_attribute
-
-    def _is_reactive_instance_attribute(self, attribute) -> bool:
-        if is_reactive(attribute):
-            return True
-
-        if isinstance(attribute, InstanceAttribute):
-            return True
-
-        return False
-
-    def getattr(self, name_or_attribute) -> Reactive:
+    def getattr(self, name_or_attribute: Any) -> Reactive:
         """
         Get a reactive instance attribute.
         """
+        self._initialize_reactive_instance_attributes()
         try:
             return self._reactive_attributes[name_or_attribute]
         except KeyError:
-            raise AttributeError('No reactive attribute "%s" exists.' % name_or_attribute)
+            raise AttributeError(f'No reactive attribute "{name_or_attribute}" exists.')
 
 
 @reactive_factory(type)
@@ -53,10 +104,25 @@ def _reactive_type(decorated_class: Type) -> type:
     # Override the initializer to instantiate an instance-level reactor controller.
     original_init = decorated_class.__init__
 
-    def init(self, *args, **kwargs):
+    @functools.wraps(original_init)
+    def _init(self, *args, **kwargs):
         self.react = _InstanceReactorController(self)
         original_init(self, *args, **kwargs)
+    decorated_class.__init__ = _init
 
-    decorated_class.__init__ = init
+    original_copy = decorated_class.__copy__ if hasattr(decorated_class, '__copy__') else None
+
+    def _copy(self):
+        if original_copy is not None:
+            copied = original_copy(self)
+        else:
+            copied = self.__class__.__new__(self.__class__)
+
+        copied.react = self.react.copy_for_instance(copied)
+
+        return copied
+    if original_copy is not None:
+        functools.update_wrapper(_copy, decorated_class.__copy__)
+    decorated_class.__copy__ = _copy
 
     return decorated_class

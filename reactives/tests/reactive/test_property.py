@@ -1,8 +1,35 @@
+import pickle
 from unittest import TestCase
 
 from reactives import reactive
 from reactives import UnsupportedReactive
 from reactives.tests import assert_not_reactor_called, assert_reactor_called, assert_in_scope
+
+
+class ReactivePropertyReactorControllerTest(TestCase):
+    @reactive
+    class _ReactivePropertyWithOnTrigger:
+        def __init__(self):
+            self.triggered = False
+
+        def _trigger(self) -> None:
+            self.triggered = True
+
+        @reactive(on_trigger=(_trigger,))
+        @property
+        def subject(self) -> None:
+            return
+
+    def test___getstate__(self) -> None:
+        subject = self._ReactivePropertyWithOnTrigger()
+        # Get the property so the instance can lazily instantiate the reactor controller we are testing here.
+        subject.subject
+        unpickled_subject = pickle.loads(pickle.dumps(subject))
+        with assert_not_reactor_called(subject):
+            with assert_reactor_called(unpickled_subject):
+                unpickled_subject.react.getattr('subject').react.trigger()
+        self.assertFalse(subject.triggered)
+        self.assertTrue(unpickled_subject.triggered)
 
 
 class ReactivePropertyTest(TestCase):

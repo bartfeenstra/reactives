@@ -1,3 +1,5 @@
+import copy
+import pickle
 from unittest import TestCase
 
 from reactives import assert_reactive
@@ -27,6 +29,43 @@ class InstanceReactorControllerTest(TestCase):
 
 
 class ReactiveTypeTest(TestCase):
+    @reactive
+    class Subject:
+        @reactive
+        def subject_function(self) -> None:
+            pass
+
+        @reactive
+        @property
+        def subject_property(self) -> None:
+            return
+
+    @reactive
+    class SubjectWithCopy(Subject):
+        def __copy__(self) -> 'ReactiveTypeTest.SubjectWithCopy':
+            return self.__class__()
+
+    def test_pickle(self) -> None:
+        subject = self.Subject()
+        unpickled_subject = pickle.loads(pickle.dumps(subject))
+        with assert_not_reactor_called(subject):
+            with assert_reactor_called(unpickled_subject):
+                unpickled_subject.react.trigger()
+
+    def test___copy___without___copy__(self) -> None:
+        subject = self.Subject()
+        copied_subject = copy.copy(subject)
+        with assert_not_reactor_called(subject):
+            with assert_reactor_called(copied_subject):
+                copied_subject.react.trigger()
+
+    def test___copy___with___copy__(self) -> None:
+        subject = self.SubjectWithCopy()
+        copied_subject = copy.copy(subject)
+        with assert_not_reactor_called(subject):
+            with assert_reactor_called(copied_subject):
+                copied_subject.react.trigger()
+
     def test_instance_trigger_without_reactors(self) -> None:
         @reactive
         class Subject:

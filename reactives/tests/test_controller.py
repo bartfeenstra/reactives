@@ -1,3 +1,4 @@
+import copy
 import gc
 from unittest import TestCase
 
@@ -20,6 +21,14 @@ class _Reactive:
 
 
 class ReactorControllerTest(TestCase):
+    def test___copy__(self) -> None:
+        sut = ReactorController()
+        with assert_reactor_called(sut):
+            copied_sut = copy.copy(sut)
+            with assert_not_reactor_called(sut):
+                with assert_reactor_called(copied_sut):
+                    copied_sut.trigger()
+
     def test_react_without_reactors(self) -> None:
         sut = ReactorController()
         sut.trigger()
@@ -80,11 +89,19 @@ class ReactorControllerTest(TestCase):
 
     def test_shutdown(self) -> None:
         sut = ReactorController()
-        with assert_reactor_called() as reactor:
-            sut.react(reactor)
-            sut.trigger()
-            sut.shutdown(reactor)
-            sut.trigger()
+        with assert_not_reactor_called() as reactor_1:
+            with assert_not_reactor_called() as reactor_2:
+                sut.react(reactor_1, reactor_2)
+                sut.shutdown()
+                sut.trigger()
+
+    def test_shutdown_with_specified_reactors(self) -> None:
+        sut = ReactorController()
+        with assert_reactor_called() as reactor_called:
+            with assert_not_reactor_called() as reactor_not_called:
+                sut.react(reactor_called, reactor_not_called)
+                sut.shutdown(reactor_not_called)
+                sut.trigger()
 
     def test_react_weakref(self) -> None:
         sut = ReactorController()
@@ -93,14 +110,6 @@ class ReactorControllerTest(TestCase):
         del reactor
         gc.collect()
         sut.trigger()
-
-    def test_shutdown_weakref(self) -> None:
-        sut = ReactorController()
-        with assert_reactor_called() as reactor:
-            sut.react_weakref(reactor)
-            sut.trigger()
-            sut.shutdown_weakref(reactor)
-            sut.trigger()
 
     def test_suspend(self) -> None:
         sut = ReactorController()
