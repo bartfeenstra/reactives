@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 from typing import Union
 
-from reactives import ReactorController, Reactor, Reactive, ReactorDefinition, isreactive, Scope
+from reactives import ReactorController, Reactor, Reactive, ReactorDefinition, isreactive, scope
 
 
 class _Reactive:
@@ -39,18 +39,18 @@ def assert_not_reactor_called(sut: Union[Reactive, ReactorController, None] = No
 
 @contextmanager
 def assert_scope_empty():
-    scope = []
-    with Scope.collect(_Reactive(), scope):
+    dependencies = []
+    with scope.collect(_Reactive(), dependencies):
         yield
-    assert scope == []
+    assert dependencies == []
 
 
 @contextmanager
 def assert_in_scope(dependency: ReactorDefinition):
-    scope = []
-    with Scope.collect(_Reactive(), scope):
+    dependencies = []
+    with scope.collect(_Reactive(), dependencies):
         yield
-    assert dependency in scope
+    assert dependency in dependencies
 
 
 def assert_is_reactive(subject):

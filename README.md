@@ -19,7 +19,7 @@ reactive and can be instantiated or inherited from directly.
 ### Custom classes
 Decorate a class to make its individual instances reactive:
 ```python
-import reactive from reactives
+from reactives.reactive import reactive
 
 @reactive
 class Apple:
@@ -34,7 +34,7 @@ apple.react.trigger()
 ### Functions and methods 
 Decorate a function:
 ```python
-import reactive from reactives
+from reactives.reactive import reactive
 
 @reactive
 def apple():
@@ -47,7 +47,7 @@ apple.react.trigger()
 
 Decorate a method on a **reactive class**:
 ```python
-import reactive from reactives
+from reactives.reactive import reactive
 
 @reactive
 class Apple:
@@ -65,7 +65,7 @@ Reactive methods must be accessed through their instance, because `Apple.apple` 
 Both functions and methods can be called automatically when they're triggered. This lets them set up something once, and
 update that thing when they're triggered:
 ```python
-import reactive from reactives
+from reactives.reactive import reactive
 
 @reactive(on_trigger_call=True)
 def warm_caches():
@@ -78,7 +78,7 @@ def warm_caches():
 ### Properties
 Decorate a property:
 ```python
-import reactive from reactives
+from reactives.reactive import reactive
 
 @reactive
 class Apple:
@@ -96,7 +96,7 @@ apple.react.getattr('apple').react.trigger()
 Properties can call any callable automatically when they're triggered. This can be useful for computed properties. The
 callable receives the property's instance as its only argument:
 ```python
-import reactive from reactives
+from reactives.reactive import reactive
 
 @reactive
 class Apple:
@@ -114,7 +114,7 @@ class Apple:
 Optionally add a setter and/or deleter like you would to any non-reactive property. If either the setter or deleter is
 called, the property will be triggered.
 ```python
-import reactive from reactives
+from reactives.reactive import reactive
 
 @reactive
 class Apple:
@@ -150,7 +150,7 @@ need to do is add your reactor to the property.
 ### Lists
 `ReactiveList` is a reactive version of Python's built-in `list`. You can use it in exactly the same way as `list`:
 ```python
-from reactives import ReactiveList
+from reactives.collections import ReactiveList
 
 fruits = ReactiveList(['apple', 'banana'])
 fruits.react(lambda: print('Look at all these delicious fruits!'))
@@ -166,7 +166,7 @@ need to do is add your reactor to the list.
 ### Dictionaries
 `ReactiveDict` is a reactive version of Python's built-in `dict`. You can use it in exactly the same way as `dict`:
 ```python
-from reactives import ReactiveDict
+from reactives.collections import ReactiveDict
 
 fruits = ReactiveDict(apple=5, banana=2)
 fruits.react(lambda: print('Look at all these delicious fruits!'))
@@ -182,9 +182,9 @@ all you  need to do is add your reactor to the dictionary.
 ### Autowiring
 We've seen how [properties](#Properties), [lists](#Lists), and [dictionaries](#Dictionaries) autowire themselves to
 their values. This is possible because properties, lists, and dictionaries know exactly which values move in and out of
-them. In other cases, we use *scope*. Any reactive can start a scope with `reactives.Scope.collect()` and collect all
+them. In other cases, we use *scope*. Any reactive can start a scope with `reactives.scope.collect()` and collect all
 reactives that are called or used during that scope window, and autowire itself to them. Conversely, any reactive can
-register itself with the current scope (if there is one) with `reactives.Scope.register*()`, and allow reactives
+register itself with the current scope (if there is one) with `reactives.scope.register*()`, and allow reactives
 depending on it to autowire themselves. In fact, this is what properties do internally.
 
 Autowiring means that as a developer, you won't need to worry about connecting the parts of your application most of the
