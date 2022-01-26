@@ -1,15 +1,28 @@
 import gc
+from typing import Any
 from unittest import TestCase
 
-from reactives import ReactorController
+from parameterized import parameterized
+
+from reactives import ReactorController, is_reactive, assert_reactive
 from reactives.tests import assert_reactor_called, assert_not_reactor_called
 
 
-class ReactorControllerTest(TestCase):
-    class _Reactive:
-        def __init__(self):
-            self.react = ReactorController()
+class _NotReactive:
+    pass
 
+
+class _NotReactiveWithAttribute:
+    def __init__(self):
+        self.react = None
+
+
+class _Reactive:
+    def __init__(self):
+        self.react = ReactorController()
+
+
+class ReactorControllerTest(TestCase):
     def test_react_without_reactors(self) -> None:
         sut = ReactorController()
         sut.trigger()
@@ -23,8 +36,8 @@ class ReactorControllerTest(TestCase):
     def test_react_with_diamond_reactors(self) -> None:
         sut = ReactorController()
         with assert_reactor_called() as final_reactor:
-            intermediate_reactive_1 = self._Reactive()
-            intermediate_reactive_2 = self._Reactive()
+            intermediate_reactive_1 = _Reactive()
+            intermediate_reactive_2 = _Reactive()
             intermediate_reactive_1.react(final_reactor)
             intermediate_reactive_2.react(final_reactor)
             sut.react(intermediate_reactive_1)
@@ -33,17 +46,17 @@ class ReactorControllerTest(TestCase):
 
     def test_react_with_intermediate_diamond_reactors(self) -> None:
         order_tracker = []
-        r_a = self._Reactive()
+        r_a = _Reactive()
         r_a.react(lambda: order_tracker.append('r_a'))
-        r_b = self._Reactive()
+        r_b = _Reactive()
         r_b.react(lambda: order_tracker.append('r_b'))
-        r_c = self._Reactive()
+        r_c = _Reactive()
         r_c.react(lambda: order_tracker.append('r_c'))
-        r_d = self._Reactive()
+        r_d = _Reactive()
         r_d.react(lambda: order_tracker.append('r_d'))
-        r_da = self._Reactive()
+        r_da = _Reactive()
         r_da.react(lambda: order_tracker.append('r_da'))
-        r_e = self._Reactive()
+        r_e = _Reactive()
         r_e.react(lambda: order_tracker.append('r_e'))
 
         r_a.react(r_b)
@@ -98,3 +111,34 @@ class ReactorControllerTest(TestCase):
             sut.react_weakref(reactor)
             with ReactorController.suspend():
                 sut.trigger()
+
+
+class AssertReactiveTest(TestCase):
+    @parameterized.expand([
+        (True,),
+        (999,),
+        (_Reactive,),
+        (_NotReactive(),),
+        (_NotReactiveWithAttribute(),),
+    ])
+    def test_with_invalid_reactive(self, reactive: Any) -> None:
+        with self.assertRaises(AssertionError):
+            assert_reactive(reactive)
+
+    def test_with_valid_reactive(self) -> None:
+        assert_reactive(_Reactive())
+
+
+class IsReactiveTest(TestCase):
+    @parameterized.expand([
+        (True,),
+        (999,),
+        (_Reactive,),
+        (_NotReactive(),),
+        (_NotReactiveWithAttribute(),),
+    ])
+    def test_with_invalid_reactive(self, reactive: Any) -> None:
+        self.assertFalse(is_reactive(reactive))
+
+    def test_with_valid_reactive(self) -> None:
+        self.assertTrue(is_reactive(_Reactive()))

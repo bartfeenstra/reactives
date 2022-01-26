@@ -1,8 +1,9 @@
 from unittest import TestCase
 
+from reactives import assert_reactive
 from reactives.reactive import reactive
 from reactives.reactive.type import _InstanceReactorController
-from reactives.tests import assert_reactor_called, assert_not_reactor_called, assert_is_reactive
+from reactives.tests import assert_reactor_called, assert_not_reactor_called
 
 
 class InstanceReactorControllerTest(TestCase):
@@ -13,7 +14,7 @@ class InstanceReactorControllerTest(TestCase):
             def subject(self):
                 pass
         sut = _InstanceReactorController(Subject())
-        assert_is_reactive(sut.getattr('subject'))
+        assert_reactive(sut.getattr('subject'))
 
     def test_getattr_with_non_existent_reactive_attribute(self) -> None:
         @reactive

@@ -1,7 +1,7 @@
 import functools
 from typing import Callable, Sequence, TypeVar, Any
 
-from reactives import scope, isreactive, assert_reactive, ReactorController
+from reactives import scope, is_reactive, assert_reactive, ReactorController
 from reactives.reactive import UnsupportedReactive, reactive_type
 from reactives.reactive.type import InstanceAttribute, _InstanceReactorController
 
@@ -46,7 +46,7 @@ class _ReactiveProperty(InstanceAttribute):
         reactive_instance_attribute = instance.react.getattr(self)
         scope.clear(reactive_instance_attribute, reactive_instance_attribute.react._dependencies)
         self._decorated_property.__set__(instance, value)
-        if isreactive(value):
+        if is_reactive(value):
             reactive_instance_attribute.react._dependencies.append(value)
             value.react.react_weakref(reactive_instance_attribute)
         reactive_instance_attribute.react.trigger()
