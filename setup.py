@@ -44,6 +44,7 @@ SETUP = {
             # flake8 3.8 fails on circular imports caused by string-based type hints.
             'flake8 ~= 3.7.0',
             'nose2 ~= 0.10',
+            'parameterized ~= 0.8',
             'setuptools ~= 54.2',
             'twine ~= 3.4',
             'wheel ~= 0.36',

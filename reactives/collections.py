@@ -2,7 +2,7 @@ from contextlib import suppress
 from copy import copy
 from typing import Any, Iterable
 
-from reactives import ReactorController, isreactive, scope
+from reactives import ReactorController, is_reactive, scope
 
 
 class ReactiveDict(dict):
@@ -13,11 +13,11 @@ class ReactiveDict(dict):
             self._wire(value)
 
     def _wire(self, value) -> None:
-        if isreactive(value):
+        if is_reactive(value):
             value.react(self)
 
     def _unwire(self, value) -> None:
-        if isreactive(value):
+        if is_reactive(value):
             value.react.shutdown(self)
 
     def clear(self) -> None:
@@ -122,11 +122,11 @@ class ReactiveList(list):
             self._wire(value)
 
     def _wire(self, value) -> None:
-        if isreactive(value):
+        if is_reactive(value):
             value.react(self)
 
     def _unwire(self, value) -> None:
-        if isreactive(value):
+        if is_reactive(value):
             value.react.shutdown(self)
 
     def append(self, value) -> None:

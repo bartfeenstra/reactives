@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 from typing import Union
 
-from reactives import ReactorController, Reactor, Reactive, ReactorDefinition, isreactive, scope
+from reactives import ReactorController, Reactor, Reactive, ReactorDefinition, scope
 
 
 class _Reactive:
@@ -51,7 +51,3 @@ def assert_in_scope(dependency: ReactorDefinition):
     with scope.collect(_Reactive(), dependencies):
         yield
     assert dependency in dependencies
-
-
-def assert_is_reactive(subject):
-    assert isreactive(subject)

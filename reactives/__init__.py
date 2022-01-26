@@ -13,7 +13,7 @@ T = TypeVar('T')
 
 
 # A reactive has an attribute called "react" containing a ReactorController.
-# See assert_reactive() and isreactive().
+# See assert_reactive() and is_reactive().
 Reactive = Any
 
 
@@ -68,7 +68,7 @@ class ReactorController:
         if isinstance(reactor, weakref.ref):
             reactor = reactor()
 
-        if isreactive(reactor):
+        if is_reactive(reactor):
             yield caller, reactor.react.trigger
             for reactor_reactor in reactor.react._reactors:
                 yield from self._expand_reactor(reactor.react.trigger, reactor_reactor)
@@ -136,15 +136,11 @@ class ReactorController:
 
 
 def assert_reactive(subject, controller_type: Type[ReactorController] = ReactorController) -> None:
-    try:
-        assert isinstance(getattr(subject, 'react'), controller_type)
-    except (AttributeError, AssertionError):
-        raise ValueError('%s is not reactive: %s.react does not exist or is not an instance of %s.' % (
-            subject, subject, controller_type))
+    if not hasattr(subject, 'react'):
+        raise AssertionError(f'{subject} is not reactive: {subject}.react does not exist.')
+    if not isinstance(subject.react, controller_type):
+        raise AssertionError(f'{subject} is not reactive: {subject}.react is not an instance of {controller_type}.')
 
 
-def isreactive(subject, controller_type: Type[ReactorController] = ReactorController) -> bool:
-    with suppress(ValueError):
-        assert_reactive(subject, controller_type)
-        return True
-    return False
+def is_reactive(subject, controller_type: Type[ReactorController] = ReactorController) -> bool:
+    return hasattr(subject, 'react') and isinstance(subject.react, controller_type)

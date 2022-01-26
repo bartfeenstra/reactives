@@ -1,6 +1,6 @@
 import inspect
 
-from reactives import ReactorController, Reactive, isreactive
+from reactives import ReactorController, Reactive, is_reactive
 from reactives.reactive import reactive_type
 
 
@@ -22,7 +22,7 @@ class _InstanceReactorController(ReactorController):
 
         # Initialize each reactive instance attribute and autowire it. Get the attributes through the class, though, so
         # we can get the actual descriptors.
-        for name, attribute in inspect.getmembers(instance.__class__, self._isreactive):
+        for name, attribute in inspect.getmembers(instance.__class__, self._is_reactive):
             if isinstance(attribute, InstanceAttribute):
                 reactor_controller = attribute.create_instance_attribute_reactor_controller(
                     instance)
@@ -32,8 +32,8 @@ class _InstanceReactorController(ReactorController):
             reactive_attribute.react(instance)
             self._reactive_attributes[name] = self._reactive_attributes[attribute] = reactive_attribute
 
-    def _isreactive(self, attribute) -> bool:
-        if isreactive(attribute):
+    def _is_reactive(self, attribute) -> bool:
+        if is_reactive(attribute):
             return True
 
         if isinstance(attribute, InstanceAttribute):
