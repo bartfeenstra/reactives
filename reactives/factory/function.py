@@ -1,9 +1,8 @@
 import functools
-from typing import Optional
+from typing import Optional, Callable
 
-from reactives import scope, ReactorController, assert_reactive, Reactive
-from reactives.reactive import reactive_type
-from reactives.reactive.type import InstanceAttribute
+from reactives import scope, ReactorController, assert_reactive, Reactive, reactive_factory
+from reactives.factory.type import InstanceAttribute
 from reactives.typing import function
 
 
@@ -29,8 +28,9 @@ class _ReactiveFunction(InstanceAttribute):
 
     def create_instance_attribute_reactor_controller(self, instance) -> ReactorController:
         return _FunctionReactorController(
-            lambda *args, **kwargs: self._call(instance.react.getattr(
-                self), instance, *args, **kwargs) if self._on_trigger_call else None,
+            lambda *args, **kwargs: self._call(instance.react.getattr(self), instance, *args, **kwargs)
+            if self._on_trigger_call
+            else None,
         )
 
     def __get__(self, instance, owner):
@@ -53,8 +53,8 @@ class _ReactiveFunction(InstanceAttribute):
             return self._decorated_function(*args, **kwargs)
 
 
-@reactive_type.register(function)
-def reactive_function(decorated_function, on_trigger_call: bool = False):
-    _reactive_function = _ReactiveFunction(decorated_function, on_trigger_call)
-    functools.update_wrapper(_reactive_function, decorated_function)
-    return _reactive_function
+@reactive_factory(function)
+def _reactive_function(decorated_function: function, on_trigger_call: bool = False) -> Callable:
+    reactive_function = _ReactiveFunction(decorated_function, on_trigger_call)
+    functools.update_wrapper(reactive_function, decorated_function)
+    return reactive_function

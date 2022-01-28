@@ -1,9 +1,8 @@
 import functools
 from typing import Callable, Sequence, TypeVar, Any
 
-from reactives import scope, is_reactive, assert_reactive, ReactorController
-from reactives.reactive import UnsupportedReactive, reactive_type
-from reactives.reactive.type import InstanceAttribute, _InstanceReactorController
+from reactives import scope, is_reactive, assert_reactive, ReactorController, reactive_factory, UnsupportedReactive
+from reactives.factory.type import InstanceAttribute, _InstanceReactorController
 
 T = TypeVar('T')
 
@@ -64,8 +63,8 @@ class _ReactiveProperty(InstanceAttribute):
         return _ReactiveProperty(self._decorated_property.deleter(*args, **kwargs))
 
 
-@reactive_type.register(property)
-def reactive_property(decorated_property, on_trigger: Sequence[Callable[[T], None]] = ()):
-    _reactive_property = _ReactiveProperty(decorated_property, on_trigger)
-    functools.update_wrapper(_reactive_property, decorated_property)
-    return _reactive_property
+@reactive_factory(property)
+def _reactive_property(decorated_property: property, on_trigger: Sequence[Callable[[T], None]] = ()):
+    reactive_property = _ReactiveProperty(decorated_property, on_trigger)
+    functools.update_wrapper(reactive_property, decorated_property)
+    return reactive_property

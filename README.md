@@ -19,7 +19,7 @@ reactive and can be instantiated or inherited from directly.
 ### Custom classes
 Decorate a class to make its individual instances reactive:
 ```python
-from reactives.reactive import reactive
+from reactives import reactive
 
 @reactive
 class Apple:
@@ -34,7 +34,7 @@ apple.react.trigger()
 ### Functions and methods 
 Decorate a function:
 ```python
-from reactives.reactive import reactive
+from reactives import reactive
 
 @reactive
 def apple():
@@ -47,7 +47,7 @@ apple.react.trigger()
 
 Decorate a method on a **reactive class**:
 ```python
-from reactives.reactive import reactive
+from reactives import reactive
 
 @reactive
 class Apple:
@@ -65,7 +65,7 @@ Reactive methods must be accessed through their instance, because `Apple.apple` 
 Both functions and methods can be called automatically when they're triggered. This lets them set up something once, and
 update that thing when they're triggered:
 ```python
-from reactives.reactive import reactive
+from reactives import reactive
 
 @reactive(on_trigger_call=True)
 def warm_caches():
@@ -78,7 +78,7 @@ def warm_caches():
 ### Properties
 Decorate a property:
 ```python
-from reactives.reactive import reactive
+from reactives import reactive
 
 @reactive
 class Apple:
@@ -96,7 +96,7 @@ apple.react.getattr('apple').react.trigger()
 Properties can call any callable automatically when they're triggered. This can be useful for computed properties. The
 callable receives the property's instance as its only argument:
 ```python
-from reactives.reactive import reactive
+from reactives import reactive
 
 @reactive
 class Apple:
@@ -114,7 +114,7 @@ class Apple:
 Optionally add a setter and/or deleter like you would to any non-reactive property. If either the setter or deleter is
 called, the property will be triggered.
 ```python
-from reactives.reactive import reactive
+from reactives import reactive
 
 @reactive
 class Apple:
@@ -150,7 +150,7 @@ need to do is add your reactor to the property.
 ### Lists
 `ReactiveList` is a reactive version of Python's built-in `list`. You can use it in exactly the same way as `list`:
 ```python
-from reactives.collections import ReactiveList
+from reactives import ReactiveList
 
 fruits = ReactiveList(['apple', 'banana'])
 fruits.react(lambda: print('Look at all these delicious fruits!'))
@@ -166,7 +166,7 @@ need to do is add your reactor to the list.
 ### Dictionaries
 `ReactiveDict` is a reactive version of Python's built-in `dict`. You can use it in exactly the same way as `dict`:
 ```python
-from reactives.collections import ReactiveDict
+from reactives import ReactiveDict
 
 fruits = ReactiveDict(apple=5, banana=2)
 fruits.react(lambda: print('Look at all these delicious fruits!'))
