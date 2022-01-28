@@ -2,8 +2,8 @@ import sys
 import unittest
 from unittest import TestCase
 
+from reactives import reactive
 from reactives.collections import ReactiveList, ReactiveDict
-from reactives.reactive import reactive
 from reactives.tests import assert_scope_empty, assert_reactor_called, assert_in_scope, assert_not_reactor_called
 
 

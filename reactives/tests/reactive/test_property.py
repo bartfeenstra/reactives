@@ -1,6 +1,7 @@
 from unittest import TestCase
 
-from reactives.reactive import reactive, UnsupportedReactive
+from reactives import reactive
+from reactives import UnsupportedReactive
 from reactives.tests import assert_not_reactor_called, assert_reactor_called, assert_in_scope
 
 

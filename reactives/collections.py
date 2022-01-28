@@ -2,7 +2,9 @@ from contextlib import suppress
 from copy import copy
 from typing import Any, Iterable
 
-from reactives import ReactorController, is_reactive, scope
+from reactives import scope
+from reactives.checks import is_reactive
+from reactives.controller import ReactorController
 
 
 class ReactiveDict(dict):

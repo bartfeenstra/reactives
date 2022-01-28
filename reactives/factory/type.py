@@ -1,7 +1,7 @@
 import inspect
+from typing import Type
 
-from reactives import ReactorController, Reactive, is_reactive
-from reactives.reactive import reactive_type
+from reactives import ReactorController, Reactive, is_reactive, reactive_factory
 
 
 class InstanceAttribute:
@@ -22,17 +22,14 @@ class _InstanceReactorController(ReactorController):
 
         # Initialize each reactive instance attribute and autowire it. Get the attributes through the class, though, so
         # we can get the actual descriptors.
-        for name, attribute in inspect.getmembers(instance.__class__, self._is_reactive):
-            if isinstance(attribute, InstanceAttribute):
-                reactor_controller = attribute.create_instance_attribute_reactor_controller(
-                    instance)
-            else:
-                reactor_controller = ReactorController()
+        for name, attribute in inspect.getmembers(instance.__class__, self._is_reactive_instance_attribute):
+            assert isinstance(attribute, InstanceAttribute)
+            reactor_controller = attribute.create_instance_attribute_reactor_controller(instance)
             reactive_attribute = _ReactiveInstanceAttribute(reactor_controller)
             reactive_attribute.react(instance)
             self._reactive_attributes[name] = self._reactive_attributes[attribute] = reactive_attribute
 
-    def _is_reactive(self, attribute) -> bool:
+    def _is_reactive_instance_attribute(self, attribute) -> bool:
         if is_reactive(attribute):
             return True
 
@@ -48,12 +45,11 @@ class _InstanceReactorController(ReactorController):
         try:
             return self._reactive_attributes[name_or_attribute]
         except KeyError:
-            raise AttributeError(
-                'No reactive attribute "%s" exists.' % name_or_attribute)
+            raise AttributeError('No reactive attribute "%s" exists.' % name_or_attribute)
 
 
-@reactive_type.register(type)
-def reactive_instance(decorated_class) -> type:
+@reactive_factory(type)
+def _reactive_type(decorated_class: Type) -> type:
     # Override the initializer to instantiate an instance-level reactor controller.
     original_init = decorated_class.__init__
 

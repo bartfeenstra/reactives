@@ -1,8 +1,8 @@
 from unittest import TestCase
 
 from reactives import assert_reactive
-from reactives.reactive import reactive
-from reactives.reactive.type import _InstanceReactorController
+from reactives import reactive
+from reactives.factory.type import _InstanceReactorController
 from reactives.tests import assert_reactor_called, assert_not_reactor_called
 
 

@@ -2,8 +2,7 @@ import functools
 from contextlib import contextmanager
 from typing import Optional, List, Callable
 
-from reactives import Reactive, ReactorDefinition
-
+from reactives.typing import Reactive, ReactorDefinition
 
 _dependencies: Optional[List[ReactorDefinition]] = None
 

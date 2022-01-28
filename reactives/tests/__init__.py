@@ -42,7 +42,7 @@ def assert_scope_empty():
     dependencies = []
     with scope.collect(_Reactive(), dependencies):
         yield
-    assert dependencies == []
+    assert dependencies == [], f'Failed asserting that the reactive scope is empty. Instead it is: {dependencies}'
 
 
 @contextmanager
@@ -50,4 +50,4 @@ def assert_in_scope(dependency: ReactorDefinition):
     dependencies = []
     with scope.collect(_Reactive(), dependencies):
         yield
-    assert dependency in dependencies
+    assert dependency in dependencies, f'Failed asserting that {dependency} was added to the reactive scope.'

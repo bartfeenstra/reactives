@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from reactives.reactive import reactive, UnsupportedReactive
+from reactives import reactive, UnsupportedReactive
 
 
 class ReactiveTest(TestCase):

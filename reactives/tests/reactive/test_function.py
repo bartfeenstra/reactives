@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from reactives.reactive import reactive
+from reactives import reactive
 from reactives.tests import assert_reactor_called
 
 
@@ -40,6 +40,33 @@ class ReactiveFunctionTest(TestCase):
 
             # Call the reactive again. This should result in dependency() being ignored and not to be autowired again.
             subject()
+            # dependency() no longer being autowired should not cause the reactor to be called.
+            dependency.react.trigger()
+
+    def test_with_reactor_and_dependency_as_instance_method(self) -> None:
+        @reactive
+        def dependency():
+            pass
+
+        @reactive
+        class Subject:
+            def __init__(self):
+                self.called = False
+
+            @reactive
+            def subject(self):
+                if not self.called:
+                    self.called = True
+                    dependency()
+        subject = Subject()
+        with assert_reactor_called(subject):
+            # Call the reactive for the first time. This should result in dependency() being autowired.
+            subject.subject()
+            # dependency() being autowired should cause the reactor to be called.
+            dependency.react.trigger()
+
+            # Call the reactive again. This should result in dependency() being ignored and not to be autowired again.
+            subject.subject()
             # dependency() no longer being autowired should not cause the reactor to be called.
             dependency.react.trigger()
 
