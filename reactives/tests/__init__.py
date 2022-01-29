@@ -1,10 +1,10 @@
 from contextlib import contextmanager
 from typing import Union
 
-from reactives import ReactorController, Reactor, Reactive, ReactorDefinition, scope
+from reactives import ReactorDefinition, ReactorController, Reactive, Reactor, scope
 
 
-class _Reactive:
+class _DummyReactive:
     def __init__(self):
         self.react = ReactorController()
 
@@ -20,34 +20,45 @@ def _assert_reactor(reactor: Reactor, sut: Union[Reactive, ReactorController, No
         yield reactor
 
 
+class _AssertCalledReactor:
+    def __init__(self):
+        self.called = False
+
+    def __call__(self, *_, **__) -> None:
+        assert not self.called, 'Failed asserting that a reactor (%s) was called only once.' % self
+        self.called = True
+
+
 @contextmanager
 def assert_reactor_called(sut: Union[Reactive, ReactorController, None] = None) -> Union[Reactor, None]:
-    def reactor() -> None:
-        assert not reactor.called, 'Failed asserting that a reactor (%s) was called only once.' % reactor
-        reactor.called = True
-    reactor.called = False
+    reactor = _AssertCalledReactor()
     yield from _assert_reactor(reactor, sut)
     assert reactor.called, 'Failed asserting that a reactor (%s) was called, but it was actually never called at all.' % reactor
 
 
+class _AssertNotCalledReactor:
+    def __call__(self, *_, **__):
+        raise AssertionError('Failed asserting that a reactor (%s) was not called.' % self)
+
+
 @contextmanager
 def assert_not_reactor_called(sut: Union[Reactive, ReactorController, None] = None) -> Union[Reactor, None]:
-    def reactor() -> None:
-        raise AssertionError('Failed asserting that a reactor (%s) was not called.' % reactor)
-    yield from _assert_reactor(reactor, sut)
+    yield from _assert_reactor(_AssertNotCalledReactor(), sut)
 
 
 @contextmanager
 def assert_scope_empty():
     dependencies = []
-    with scope.collect(_Reactive(), dependencies):
+    with scope.collect(_DummyReactive(), dependencies):
         yield
-    assert dependencies == [], f'Failed asserting that the reactive scope is empty. Instead it is: {dependencies}'
+    if dependencies:
+        raise AssertionError(f'Failed asserting that the reactive scope is empty. Instead it is: {dependencies}')
 
 
 @contextmanager
 def assert_in_scope(dependency: ReactorDefinition):
     dependencies = []
-    with scope.collect(_Reactive(), dependencies):
+    with scope.collect(_DummyReactive(), dependencies):
         yield
-    assert dependency in dependencies, f'Failed asserting that {dependency} was added to the reactive scope.'
+    if dependency not in dependencies:
+        raise AssertionError(f'Failed asserting that {dependency} was added to the reactive scope.')

@@ -29,7 +29,7 @@ def collect(dependent: Reactive, dependencies: List[ReactorDefinition]) -> None:
 
 def clear(dependent: Reactive, dependencies: List[ReactorDefinition]):
     for dependency in dependencies:
-        dependency.react.shutdown_weakref(dependent)
+        dependency.react.shutdown(dependent)
     dependencies.clear()
 
 
@@ -54,3 +54,12 @@ def register_self(decorated_function: Callable) -> Callable:
         return decorated_function(self, *args, **kwargs)
 
     return _register_self
+
+
+@contextmanager
+def suspend() -> None:
+    global _dependencies
+    original_dependencies = _dependencies
+    _dependencies = None
+    yield
+    _dependencies = original_dependencies

@@ -1,3 +1,5 @@
+import copy
+import dill as pickle
 import sys
 import unittest
 from unittest import TestCase
@@ -7,13 +9,102 @@ from reactives.collections import ReactiveList, ReactiveDict
 from reactives.tests import assert_scope_empty, assert_reactor_called, assert_in_scope, assert_not_reactor_called
 
 
+@reactive
+class _Reactive:
+    pass
+
+
 class ReactiveDictTest(TestCase):
-    @reactive
-    class Reactive:
-        pass
+    def test___getstate__(self) -> None:
+        value = _Reactive()
+        subject = ReactiveDict(value=value)
+        copied_subject = pickle.loads(pickle.dumps(subject))
+        copied_value = copied_subject['value']
+
+        # Assert that the copy contains exactly one value which is a copy of the original.
+        self.assertEqual(1, len(copied_subject))
+        self.assertIsNot(value, copied_value)
+
+        # Assert that triggering the original does not trigger the copy.
+        with assert_not_reactor_called(copied_subject):
+            subject.react.trigger()
+
+        # Assert that triggering the copy does not trigger the original.
+        with assert_not_reactor_called(subject):
+            copied_subject.react.trigger()
+
+        # Assert that neither the copied instance nor the copied value is triggered when triggering the original value.
+        with assert_not_reactor_called(copied_subject):
+            with assert_not_reactor_called(copied_value):
+                with assert_reactor_called(subject):
+                    with assert_reactor_called(value):
+                        value.react.trigger()
+
+        # Assert that neither the original instance nor the original value is triggered when triggering the copied
+        # value.
+        with assert_not_reactor_called(subject):
+            with assert_not_reactor_called(value):
+                with assert_reactor_called(copied_subject):
+                    with assert_reactor_called(copied_value):
+                        copied_value.react.trigger()
+
+    def test___copy__(self) -> None:
+        value = _Reactive()
+        subject = ReactiveDict(value=value)
+        copied_subject = copy.copy(subject)
+
+        # Assert that the copy contains exactly the same values as the original.
+        self.assertEqual(1, len(copied_subject))
+        self.assertIs(value, copied_subject['value'])
+
+        # Assert that triggering the original does not trigger the copy.
+        with assert_not_reactor_called(copied_subject):
+            subject.react.trigger()
+
+        # Assert that triggering the copy does not trigger the original.
+        with assert_not_reactor_called(subject):
+            copied_subject.react.trigger()
+
+        # Assert that triggering the value triggers both the original and the copy.
+        with assert_reactor_called(value):
+            with assert_reactor_called(copied_subject):
+                value.react.trigger()
+
+    def test___deepcopy__(self) -> None:
+        value = _Reactive()
+        subject = ReactiveDict(value=value)
+        copied_subject = copy.deepcopy(subject)
+        copied_value = copied_subject['value']
+
+        # Assert that the copy contains exactly one value which is a copy of the original.
+        self.assertEqual(1, len(copied_subject))
+        self.assertIsNot(value, copied_value)
+
+        # Assert that triggering the original does not trigger the copy.
+        with assert_not_reactor_called(copied_subject):
+            subject.react.trigger()
+
+        # Assert that triggering the copy does not trigger the original.
+        with assert_not_reactor_called(subject):
+            copied_subject.react.trigger()
+
+        # Assert that neither the copied instance nor the copied value is triggered when triggering the original value.
+        with assert_not_reactor_called(copied_subject):
+            with assert_not_reactor_called(copied_value):
+                with assert_reactor_called(subject):
+                    with assert_reactor_called(value):
+                        value.react.trigger()
+
+        # Assert that neither the original instance nor the original value is triggered when triggering the copied
+        # value.
+        with assert_not_reactor_called(subject):
+            with assert_not_reactor_called(value):
+                with assert_reactor_called(copied_subject):
+                    with assert_reactor_called(copied_value):
+                        copied_value.react.trigger()
 
     def test_clear(self) -> None:
-        reactive_value = self.Reactive()
+        reactive_value = _Reactive()
         sut = ReactiveDict(one=1, reactive=reactive_value)
         with assert_scope_empty():
             with assert_reactor_called(sut):
@@ -37,7 +128,7 @@ class ReactiveDictTest(TestCase):
             self.assertEquals(['one', 'two'], list(sut.keys()))
 
     def test_pop(self) -> None:
-        reactive_value = self.Reactive()
+        reactive_value = _Reactive()
         sut = ReactiveDict(reactive=reactive_value)
         with assert_scope_empty():
             with assert_reactor_called(sut):
@@ -46,7 +137,7 @@ class ReactiveDictTest(TestCase):
         self.assertCountEqual([], reactive_value.react._reactors)
 
     def test_popitem(self) -> None:
-        reactive_value = self.Reactive()
+        reactive_value = _Reactive()
         sut = ReactiveDict(reactive=reactive_value)
         with assert_scope_empty():
             with assert_reactor_called(sut):
@@ -57,7 +148,7 @@ class ReactiveDictTest(TestCase):
         self.assertCountEqual([], reactive_value.react._reactors)
 
     def test_setdefault_with_existing_key(self) -> None:
-        reactive_value = self.Reactive()
+        reactive_value = _Reactive()
         sut = ReactiveDict(reactive='notActuallyReactive')
         with assert_in_scope(sut):
             with assert_not_reactor_called(sut):
@@ -66,7 +157,7 @@ class ReactiveDictTest(TestCase):
         self.assertNotIn(sut, reactive_value.react._reactors)
 
     def test_setdefault_with_unknown_key(self) -> None:
-        reactive_value = self.Reactive()
+        reactive_value = _Reactive()
         sut = ReactiveDict()
         with assert_in_scope(sut):
             with assert_reactor_called(sut):
@@ -75,7 +166,7 @@ class ReactiveDictTest(TestCase):
         self.assertIn(sut, reactive_value.react._reactors)
 
     def test_update(self) -> None:
-        reactive_value = self.Reactive()
+        reactive_value = _Reactive()
         sut = ReactiveDict(one=1)
         with assert_scope_empty():
             with assert_reactor_called(sut):
@@ -97,7 +188,7 @@ class ReactiveDictTest(TestCase):
             self.assertNotIn('three', sut)
 
     def test_delitem(self) -> None:
-        reactive_value = self.Reactive()
+        reactive_value = _Reactive()
         sut = ReactiveDict(reactive=reactive_value)
         with assert_scope_empty():
             with assert_reactor_called(sut):
@@ -145,7 +236,7 @@ class ReactiveDictTest(TestCase):
             self.assertEquals(['two', 'one'], list(reversed(sut)))
 
     def test_setitem(self) -> None:
-        reactive_value = self.Reactive()
+        reactive_value = _Reactive()
         sut = ReactiveDict()
         with assert_scope_empty():
             with assert_reactor_called(sut):
@@ -161,12 +252,118 @@ class ReactiveDictTest(TestCase):
 
 
 class ReactiveListTest(TestCase):
-    @reactive
-    class Reactive:
-        pass
+    def test___getstate__(self) -> None:
+        value = _Reactive()
+        subject = ReactiveList([value])
+        copied_subject = pickle.loads(pickle.dumps(subject))
+        copied_value = copied_subject[0]
+
+        # Assert that the copy contains exactly one value which is a copy of the original.
+        self.assertEqual(1, len(copied_subject))
+        self.assertIsNot(value, copied_value)
+
+        # Assert that triggering the original does not trigger the copy.
+        with assert_not_reactor_called(copied_subject):
+            subject.react.trigger()
+
+        # Assert that triggering the copy does not trigger the original.
+        with assert_not_reactor_called(subject):
+            copied_subject.react.trigger()
+
+        # Assert that neither the copied instance nor the copied value is triggered when triggering the original value.
+        with assert_not_reactor_called(copied_subject):
+            with assert_not_reactor_called(copied_value):
+                with assert_reactor_called(subject):
+                    with assert_reactor_called(value):
+                        value.react.trigger()
+
+        # Assert that neither the original instance nor the original value is triggered when triggering the copied
+        # value.
+        with assert_not_reactor_called(subject):
+            with assert_not_reactor_called(value):
+                with assert_reactor_called(copied_subject):
+                    with assert_reactor_called(copied_value):
+                        copied_value.react.trigger()
+
+    def test___copy__(self) -> None:
+        value = _Reactive()
+        subject = ReactiveList([value])
+        copied_subject = copy.copy(subject)
+
+        # Assert that the copy contains exactly the same values as the original.
+        self.assertEqual(1, len(copied_subject))
+        self.assertIs(value, copied_subject[0])
+
+        # Assert that triggering the original does not trigger the copy.
+        with assert_not_reactor_called(copied_subject):
+            subject.react.trigger()
+
+        # Assert that triggering the copy does not trigger the original.
+        with assert_not_reactor_called(subject):
+            copied_subject.react.trigger()
+
+        # Assert that triggering the value triggers both the original and the copy.
+        with assert_reactor_called(value):
+            with assert_reactor_called(copied_subject):
+                value.react.trigger()
+
+    def test_copy(self) -> None:
+        value = _Reactive()
+        subject = ReactiveList([value])
+        copied_subject = subject.copy()
+
+        # Assert that the copy contains exactly the same values as the original.
+        self.assertEqual(1, len(copied_subject))
+        self.assertIs(value, copied_subject[0])
+
+        # Assert that triggering the original does not trigger the copy.
+        with assert_not_reactor_called(copied_subject):
+            subject.react.trigger()
+
+        # Assert that triggering the copy does not trigger the original.
+        with assert_not_reactor_called(subject):
+            copied_subject.react.trigger()
+
+        # Assert that triggering the value triggers both the original and the copy.
+        with assert_reactor_called(value):
+            with assert_reactor_called(copied_subject):
+                value.react.trigger()
+
+    def test___deepcopy__(self) -> None:
+        value = _Reactive()
+        subject = ReactiveList([value])
+        copied_subject = copy.deepcopy(subject)
+        copied_value = copied_subject[0]
+
+        # Assert that the copy contains exactly one value which is a copy of the original.
+        self.assertEqual(1, len(copied_subject))
+        self.assertIsNot(value, copied_value)
+
+        # Assert that triggering the original does not trigger the copy.
+        with assert_not_reactor_called(copied_subject):
+            subject.react.trigger()
+
+        # Assert that triggering the copy does not trigger the original.
+        with assert_not_reactor_called(subject):
+            copied_subject.react.trigger()
+
+        # Assert that neither the copied instance nor the copied value is triggered when triggering the original value.
+        with assert_not_reactor_called(copied_subject):
+            with assert_not_reactor_called(copied_value):
+                with assert_reactor_called(subject):
+                    with assert_reactor_called(value):
+                        value.react.trigger()
+
+        # Assert that neither the original instance nor the original value is triggered when triggering the copied
+        # value.
+        with assert_not_reactor_called(subject):
+            with assert_not_reactor_called(value):
+                with assert_reactor_called(copied_subject):
+                    with assert_reactor_called(copied_value):
+                        copied_value.react.trigger()
 
     def test_append(self) -> None:
-        reactive_value = self.Reactive()
+        reactive_value = _Reactive()
         sut = ReactiveList()
         with assert_scope_empty():
             with assert_reactor_called(sut):
@@ -175,7 +372,7 @@ class ReactiveListTest(TestCase):
             reactive_value.react.trigger()
 
     def test_clear(self) -> None:
-        reactive_value = self.Reactive()
+        reactive_value = _Reactive()
         sut = ReactiveList([reactive_value])
         with assert_scope_empty():
             with assert_reactor_called(sut):
@@ -183,19 +380,14 @@ class ReactiveListTest(TestCase):
         self.assertEquals([], sut)
         self.assertEquals([], reactive_value.react._reactors)
 
-    def test_copy(self) -> None:
-        sut = ReactiveList([1, 2])
-        with assert_in_scope(sut):
-            self.assertEquals([1, 2], sut.copy())
-
     def test_count(self) -> None:
         sut = ReactiveList([1, 2, 1])
         with assert_in_scope(sut):
             self.assertEquals(2, sut.count(1))
 
     def test_extend(self) -> None:
-        reactive_value1 = self.Reactive()
-        reactive_value2 = self.Reactive()
+        reactive_value1 = _Reactive()
+        reactive_value2 = _Reactive()
         sut = ReactiveList([1, 2])
         with assert_scope_empty():
             with assert_reactor_called(sut):
@@ -217,7 +409,7 @@ class ReactiveListTest(TestCase):
             self.assertEquals(2, sut.index(1, 2, 5))
 
     def test_insert(self) -> None:
-        reactive_value = self.Reactive()
+        reactive_value = _Reactive()
         sut = ReactiveList([1, 2])
         with assert_scope_empty():
             with assert_reactor_called(sut):
@@ -227,7 +419,7 @@ class ReactiveListTest(TestCase):
             reactive_value.react.trigger()
 
     def test_pop_without_index(self) -> None:
-        reactive_value = self.Reactive()
+        reactive_value = _Reactive()
         sut = ReactiveList([1, 2, reactive_value])
         with assert_scope_empty():
             with assert_reactor_called(sut):
@@ -237,7 +429,7 @@ class ReactiveListTest(TestCase):
             reactive_value.react.trigger()
 
     def test_pop_with_index(self) -> None:
-        reactive_value = self.Reactive()
+        reactive_value = _Reactive()
         sut = ReactiveList([1, reactive_value, 2])
         with assert_scope_empty():
             with assert_reactor_called(sut):
@@ -247,7 +439,7 @@ class ReactiveListTest(TestCase):
             reactive_value.react.trigger()
 
     def test_remove(self) -> None:
-        reactive_value = self.Reactive()
+        reactive_value = _Reactive()
         sut = ReactiveList([reactive_value])
         with assert_scope_empty():
             with assert_reactor_called(sut):
@@ -285,7 +477,7 @@ class ReactiveListTest(TestCase):
         self.assertEquals([3, 2, 1], sut)
 
     def test_add(self) -> None:
-        reactive_value = self.Reactive()
+        reactive_value = _Reactive()
         sut = ReactiveList([reactive_value])
         other = [1, 2]
         with assert_scope_empty():
@@ -302,7 +494,7 @@ class ReactiveListTest(TestCase):
             self.assertNotIn(2, sut)
 
     def test_delitem(self) -> None:
-        reactive_value = self.Reactive()
+        reactive_value = _Reactive()
         sut = ReactiveList([reactive_value])
         with assert_scope_empty():
             with assert_reactor_called(sut):
@@ -321,8 +513,8 @@ class ReactiveListTest(TestCase):
             self.assertEquals(2, sut[1])
 
     def test_iadd(self) -> None:
-        reactive_value1 = self.Reactive()
-        reactive_value2 = self.Reactive()
+        reactive_value1 = _Reactive()
+        reactive_value2 = _Reactive()
         sut = ReactiveList([1, 2])
         with assert_in_scope(sut):
             with assert_reactor_called(sut):
@@ -334,8 +526,8 @@ class ReactiveListTest(TestCase):
             reactive_value2.react.trigger()
 
     def test_imul(self) -> None:
-        reactive_value1 = self.Reactive()
-        reactive_value2 = self.Reactive()
+        reactive_value1 = _Reactive()
+        reactive_value2 = _Reactive()
         sut = ReactiveList([reactive_value1, reactive_value2])
         with assert_in_scope(sut):
             with assert_reactor_called(sut):
@@ -358,8 +550,8 @@ class ReactiveListTest(TestCase):
             self.assertEquals(2, len(sut))
 
     def test_mul(self) -> None:
-        reactive_value1 = self.Reactive()
-        reactive_value2 = self.Reactive()
+        reactive_value1 = _Reactive()
+        reactive_value2 = _Reactive()
         sut = ReactiveList([reactive_value1, reactive_value2])
         with assert_scope_empty():
             with assert_not_reactor_called(sut):
@@ -382,8 +574,8 @@ class ReactiveListTest(TestCase):
             self.assertEquals([2, 1], list(reversed(sut)))
 
     def test_rmul(self) -> None:
-        reactive_value1 = self.Reactive()
-        reactive_value2 = self.Reactive()
+        reactive_value1 = _Reactive()
+        reactive_value2 = _Reactive()
         sut = ReactiveList([reactive_value1, reactive_value2])
         with assert_scope_empty():
             with assert_not_reactor_called(sut):
@@ -396,7 +588,7 @@ class ReactiveListTest(TestCase):
             reactive_value2.react.trigger()
 
     def test_setitem(self) -> None:
-        reactive_value = self.Reactive()
+        reactive_value = _Reactive()
         sut = ReactiveList([1, 2])
         with assert_scope_empty():
             with assert_reactor_called(sut):
