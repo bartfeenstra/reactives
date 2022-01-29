@@ -1,47 +1,51 @@
 import functools
-from typing import Callable, Sequence, TypeVar, Any, Dict, Generic
+from typing import Any, Dict, Callable, Optional, TypeVar
 
 from reactives import scope, is_reactive, assert_reactive, ReactorController, reactive_factory, UnsupportedReactive
 from reactives.factory.type import InstanceAttribute, _InstanceReactorController
 
+
 T = TypeVar('T')
 
 
-class _ReactivePropertyReactorController(ReactorController, Generic[T]):
-    def __init__(self, instance: T, on_trigger: Sequence[Callable[[T], None]]):
+class _ReactivePropertyReactorController(ReactorController):
+    def __init__(self, instance: T, deleter: Optional[Callable[[T], None]] = None):
         super().__init__()
         self._instance = instance
-        self._on_trigger = on_trigger
+        self._deleter = deleter
         self._dependencies = []
 
     def __getstate__(self) -> Dict[str, Any]:
         state = super().__getstate__()
-        state['_on_trigger'] = self._on_trigger
         state['_instance'] = self._instance
+        state['_deleter'] = self._deleter
         state['_dependencies'] = self._dependencies
         return state
 
     def __setstate__(self, state: Dict[str, Any]) -> None:
         super().__setstate__(state)
-        self._on_trigger = state['_on_trigger']
         self._instance = state['_instance']
+        self._deleter = state['_deleter']
         self._dependencies = state['_dependencies']
 
     def trigger(self) -> None:
-        for on_trigger in self._on_trigger:
-            on_trigger(self._instance)
+        if self._deleter:
+            self._deleter(self._instance)
         super().trigger()
 
 
 class _ReactiveProperty(InstanceAttribute):
-    def __init__(self, decorated_property: property, on_trigger: Sequence[Callable[[T], None]] = ()):
+    def __init__(self, decorated_property: property, on_trigger_delete: bool):
         if not decorated_property.fget:
             raise UnsupportedReactive('Properties must have a getter to be made reactive.')
         self._decorated_property = decorated_property
-        self._on_trigger = on_trigger
+        self._on_trigger_delete = on_trigger_delete
 
     def create_instance_attribute_reactor_controller(self, instance) -> ReactorController:
-        return _ReactivePropertyReactorController(instance, self._on_trigger)
+        return _ReactivePropertyReactorController(
+            instance,
+            self._decorated_property.fdel if self._on_trigger_delete else None,
+        )
 
     def __get__(self, instance, owner=None) -> Any:
         if instance is None:
@@ -70,14 +74,14 @@ class _ReactiveProperty(InstanceAttribute):
         instance.react.getattr(self).react.trigger()
 
     def setter(self, *args, **kwargs):
-        return _ReactiveProperty(self._decorated_property.setter(*args, **kwargs))
+        return _ReactiveProperty(self._decorated_property.setter(*args, **kwargs), self._on_trigger_delete)
 
     def deleter(self, *args, **kwargs):
-        return _ReactiveProperty(self._decorated_property.deleter(*args, **kwargs))
+        return _ReactiveProperty(self._decorated_property.deleter(*args, **kwargs), self._on_trigger_delete)
 
 
 @reactive_factory(property)
-def _reactive_property(decorated_property: property, on_trigger: Sequence[Callable[[T], None]] = ()):
-    reactive_property = _ReactiveProperty(decorated_property, on_trigger)
+def _reactive_property(decorated_property: property, on_trigger_delete: bool = True):
+    reactive_property = _ReactiveProperty(decorated_property, on_trigger_delete)
     functools.update_wrapper(reactive_property, decorated_property)
     return reactive_property
