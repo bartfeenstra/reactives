@@ -93,8 +93,7 @@ apple.react.getattr('apple').react.trigger()
 # >>> "The apple got triggered!"
 ```
 
-Properties can call any callable automatically when they're triggered. This can be useful for computed properties. The
-callable receives the property's instance as its only argument:
+If a property *deleter* is present, it will be called automatically when the property is triggered:
 ```python
 from reactives import reactive
 
@@ -102,17 +101,55 @@ from reactives import reactive
 class Apple:
     def __init__(self):
         self._computed_something = None
-        
-    @reactive(on_trigger=(lambda instance: setattr(instance, '_computed_something', None),))
+
+    @reactive
     @property
     def apple(self) -> str:
         if self._computed_something is None:
             self._computed_something = 'I got you something!'
         return self._computed_something
+
+    @apple.deleter
+    def apple(self)  -> None:
+        self._computed_something = 'I got you nothing!'
+
+apple = Apple()
+print(apple.apple)
+# >>> "I got you something!"
+apple.react.getattr('apple').react().trigger()
+print(apple.apple)
+# >>> "I got you nothing!"
 ```
 
-Optionally add a setter and/or deleter like you would to any non-reactive property. If either the setter or deleter is
-called, the property will be triggered.
+If you do not want automatic deletion, configure the property's `@reactive` decorator as such:
+```python
+from reactives import reactive
+
+@reactive
+class Apple:
+    def __init__(self):
+        self._computed_something = None
+
+    @reactive(on_trigger_delete=False)
+    @property
+    def apple(self) -> str:
+        if self._computed_something is None:
+            self._computed_something = 'I got you something!'
+        return self._computed_something
+
+    @apple.deleter
+    def apple(self)  -> None:
+        self._computed_something = 'I got you nothing!'
+
+apple = Apple()
+print(apple.apple)
+# >>> "I got you something!"
+apple.react.getattr('apple').react().trigger()
+print(apple.apple)
+# >>> "I got you something!"
+```
+
+Property *setters* work exactly like with any other `property`:
 ```python
 from reactives import reactive
 
@@ -129,16 +166,10 @@ class Apple:
     @apple.setter
     def apple(self, something: str):
         self._something = something
-    
-    @apple.deleter
-    def apple(self):
-        self._something = None
 
 apple = Apple()
 apple.react.getattr('apple').react(lambda: print('The apple got triggered!'))
 apple.apple = 'I got you something else!'
-# >>> "The apple got triggered!"
-del apple.apple
 # >>> "The apple got triggered!"
 ```
 
