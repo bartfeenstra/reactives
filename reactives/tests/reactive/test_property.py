@@ -8,28 +8,20 @@ from reactives.tests import assert_not_reactor_called, assert_reactor_called, as
 
 class ReactivePropertyReactorControllerTest(TestCase):
     @reactive
-    class _ReactivePropertyWithOnTrigger:
-        def __init__(self):
-            self.triggered = False
-
-        def _trigger(self) -> None:
-            self.triggered = True
-
-        @reactive(on_trigger=(_trigger,))
+    class _ReactiveProperty:
+        @reactive
         @property
         def subject(self) -> None:
             return
 
     def test___getstate__(self) -> None:
-        subject = self._ReactivePropertyWithOnTrigger()
+        subject = self._ReactiveProperty()
         # Get the property so the instance can lazily instantiate the reactor controller we are testing here.
         subject.subject
         unpickled_subject = pickle.loads(pickle.dumps(subject))
         with assert_not_reactor_called(subject):
             with assert_reactor_called(unpickled_subject):
                 unpickled_subject.react.getattr('subject').react.trigger()
-        self.assertFalse(subject.triggered)
-        self.assertTrue(unpickled_subject.triggered)
 
 
 class ReactivePropertyTest(TestCase):
@@ -165,17 +157,55 @@ class ReactivePropertyTest(TestCase):
             assert_not_reactor_called())
         dependency.react.trigger()
 
-    def test_on_trigger(self) -> None:
+    def test_on_trigger_delete_without_deleter(self) -> None:
         @reactive
         class Subject:
             def __init__(self):
                 self._subject = 123
 
-            @reactive(on_trigger=(lambda instance: setattr(instance, '_subject', None),))
+            @reactive
             @property
             def subject(self):
                 return self._subject
 
         subject = Subject()
         subject.react.getattr('subject').react.trigger()
+        self.assertEqual(123, subject._subject)
+
+    def test_on_trigger_delete_with_deleter(self) -> None:
+        @reactive
+        class Subject:
+            def __init__(self):
+                self._subject = 123
+
+            @reactive
+            @property
+            def subject(self):
+                return self._subject
+
+            @subject.deleter
+            def subject(self) -> None:
+                self._subject = None
+
+        subject = Subject()
+        subject.react.getattr('subject').react.trigger()
         self.assertIsNone(subject._subject)
+
+    def test_on_trigger_delete_with_deleter_but_on_trigger_delete_is_false(self) -> None:
+        @reactive
+        class Subject:
+            def __init__(self):
+                self._subject = 123
+
+            @reactive(on_trigger_delete=False)
+            @property
+            def subject(self):
+                return self._subject
+
+            @subject.deleter
+            def subject(self) -> None:
+                self._subject = None
+
+        subject = Subject()
+        subject.react.getattr('subject').react.trigger()
+        self.assertEqual(123, subject._subject)
