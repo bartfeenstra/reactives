@@ -1,11 +1,24 @@
+import copy
 import pickle
 from unittest import TestCase
 
 from reactives import reactive
+from reactives.factory.function import _FunctionReactorController
 from reactives.tests import assert_reactor_called, assert_not_reactor_called
 
 
 class ReactiveFunctionControllerTest(TestCase):
+    def test___copy__(self) -> None:
+        @reactive
+        def subject():
+            pass
+        sut = _FunctionReactorController()
+        with assert_reactor_called(sut):
+            copied_sut = copy.copy(sut)
+            with assert_not_reactor_called(sut):
+                with assert_reactor_called(copied_sut):
+                    copied_sut.trigger()
+
     @reactive
     class _Reactive:
         @reactive

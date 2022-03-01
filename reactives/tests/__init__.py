@@ -24,7 +24,7 @@ class _AssertCalledReactor:
     def __init__(self):
         self.called = False
 
-    def __call__(self, *_, **__) -> None:
+    def __call__(self) -> None:
         assert not self.called, 'Failed asserting that a reactor (%s) was called only once.' % self
         self.called = True
 
@@ -37,7 +37,7 @@ def assert_reactor_called(sut: Union[Reactive, ReactorController, None] = None) 
 
 
 class _AssertNotCalledReactor:
-    def __call__(self, *_, **__):
+    def __call__(self):
         raise AssertionError('Failed asserting that a reactor (%s) was not called.' % self)
 
 

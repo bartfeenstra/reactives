@@ -7,7 +7,7 @@ from reactives.typing import function
 
 
 class _FunctionReactorController(ReactorController):
-    def __init__(self, on_trigger_call: Optional[callable]):
+    def __init__(self, on_trigger_call: Optional[callable] = None):
         super().__init__()
         self._on_trigger_call = on_trigger_call
         self._dependencies = []
@@ -22,6 +22,12 @@ class _FunctionReactorController(ReactorController):
         super().__setstate__(state)
         self._on_trigger_call = state['_on_trigger_call']
         self._dependencies = state['_dependencies']
+
+    def __copy__(self):
+        copied = super().__copy__()
+        copied._on_trigger_call = self._on_trigger_call
+        copied._dependencies = self._dependencies
+        return copied
 
     def trigger(self) -> None:
         if self._on_trigger_call is not None:
