@@ -1,12 +1,29 @@
+import copy
 import pickle
 from unittest import TestCase
 
 from reactives import reactive
 from reactives import UnsupportedReactive
+from reactives.factory.property import _PropertyReactorController
 from reactives.tests import assert_not_reactor_called, assert_reactor_called, assert_in_scope
 
 
-class ReactivePropertyReactorControllerTest(TestCase):
+class PropertyReactorControllerTest(TestCase):
+    def test___copy__(self) -> None:
+        @reactive
+        class Subject:
+            @reactive
+            @property
+            def subject(self) -> None:
+                return
+        subject = Subject()
+        sut = _PropertyReactorController(subject)
+        with assert_reactor_called(sut):
+            copied_sut = copy.copy(sut)
+            with assert_not_reactor_called(sut):
+                with assert_reactor_called(copied_sut):
+                    copied_sut.trigger()
+
     @reactive
     class _ReactiveProperty:
         @reactive

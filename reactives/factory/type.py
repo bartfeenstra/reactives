@@ -38,14 +38,31 @@ class _InstanceReactorController(ReactorController):
                 copied._reactive_attributes[reactive_attr_name].react.shutdown(self._instance)
             copied._reactive_attributes[reactive_attr_name].react(copied._instance)
 
+    def __getstate__(self) -> Dict[str, Any]:
+        state = super().__getstate__()
+        state['_instance'] = self._instance
+        state['_reactive_attributes'] = {
+            reactive_attr_name: reactive_attribute
+            for reactive_attr_name, reactive_attribute in self._reactive_attributes.items()
+            # Filter out reactive attributes set by value, and keep those set by attribute name. The value keys will be
+            # restored upon unpickling.
+            if isinstance(reactive_attr_name, str)
+        }
+        return state
+
+    def __setstate__(self, state: Dict[str, Any]) -> None:
+        super().__setstate__(state)
+        self._instance = state['_instance']
+        self._reactive_attributes = {}
+        self._reactive_attributes = state['_reactive_attributes']
+        self._initialized = False
+
     def __copy__(self) -> ReactorController:
         self._initialize_reactive_instance_attributes()
         copied = super().__copy__()
         copied._instance = self._instance
-        copied._reactive_attributes = {}
-        for reactive_attr_name, reactive_attribute in self._reactive_attributes.items():
-            copied._reactive_attributes[reactive_attr_name] = copy.copy(reactive_attribute)
-        copied._initialized = False
+        copied._reactive_attributes = copy.copy(self._reactive_attributes)
+        copied._initialized = True
         return copied
 
     def _initialize_reactive_instance_attributes(self) -> None:
@@ -68,25 +85,6 @@ class _InstanceReactorController(ReactorController):
         reactive_attribute.react(self._instance)
         # Store reactive attributes by name as well as their original value, as we need access through both.
         self._reactive_attributes[reactive_attr_name] = self._reactive_attributes[reactive_attr_value] = reactive_attribute
-
-    def __getstate__(self) -> Dict[str, Any]:
-        state = super().__getstate__()
-        state['_instance'] = self._instance
-        state['_reactive_attributes'] = {
-            reactive_attr_name: reactive_attribute
-            for reactive_attr_name, reactive_attribute in self._reactive_attributes.items()
-            # Filter out reactive attributes set by value, and keep those set by attribute name. The value keys will be
-            # restored upon unpickling.
-            if isinstance(reactive_attr_name, str)
-        }
-        return state
-
-    def __setstate__(self, state: Dict[str, Any]) -> None:
-        super().__setstate__(state)
-        self._instance = state['_instance']
-        self._reactive_attributes = {}
-        self._reactive_attributes = state['_reactive_attributes']
-        self._initialized = False
 
     def getattr(self, name_or_attribute: Any) -> Reactive:
         """
@@ -122,7 +120,7 @@ def _reactive_type(decorated_class: Type) -> type:
 
         return copied
     if original_copy is not None:
-        functools.update_wrapper(_copy, decorated_class.__copy__)
+        functools.update_wrapper(_copy, original_copy)
     decorated_class.__copy__ = _copy
 
     return decorated_class

@@ -9,6 +9,17 @@ from reactives.tests import assert_reactor_called, assert_not_reactor_called
 
 
 class InstanceReactorControllerTest(TestCase):
+    def test___copy__(self) -> None:
+        @reactive
+        class Subject:
+            pass
+        sut = _InstanceReactorController(Subject())
+        with assert_reactor_called(sut):
+            copied_sut = copy.copy(sut)
+            with assert_not_reactor_called(sut):
+                with assert_reactor_called(copied_sut):
+                    copied_sut.trigger()
+
     def test_getattr_with_reactive_attribute(self) -> None:
         @reactive
         class Subject:

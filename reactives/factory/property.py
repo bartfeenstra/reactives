@@ -8,7 +8,7 @@ from reactives.factory.type import InstanceAttribute, _InstanceReactorController
 T = TypeVar('T')
 
 
-class _ReactivePropertyReactorController(ReactorController):
+class _PropertyReactorController(ReactorController):
     def __init__(self, instance: T, deleter: Optional[Callable[[T], None]] = None):
         super().__init__()
         self._instance = instance
@@ -28,6 +28,13 @@ class _ReactivePropertyReactorController(ReactorController):
         self._deleter = state['_deleter']
         self._dependencies = state['_dependencies']
 
+    def __copy__(self):
+        copied = super().__copy__()
+        copied._instance = self._instance
+        copied._deleter = self._deleter
+        copied._dependencies = self._dependencies
+        return copied
+
     def trigger(self) -> None:
         if self._deleter:
             self._deleter(self._instance)
@@ -42,7 +49,7 @@ class _ReactiveProperty(InstanceAttribute):
         self._on_trigger_delete = on_trigger_delete
 
     def create_instance_attribute_reactor_controller(self, instance) -> ReactorController:
-        return _ReactivePropertyReactorController(
+        return _PropertyReactorController(
             instance,
             self._decorated_property.fdel if self._on_trigger_delete else None,
         )

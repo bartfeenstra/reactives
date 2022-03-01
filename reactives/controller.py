@@ -31,12 +31,6 @@ class ReactorController:
         copied._reactors = copy.copy(self._reactors)
         return copied
 
-    def __deepcopy__(self, memo: Dict) -> 'ReactorController':
-        copied = self.__class__.__new__(self.__class__)
-        memo[id(self)] = copied
-        copied._reactors = copy.deepcopy(self._reactors, memo)
-        return copied
-
     def __getstate__(self) -> Dict[str, Any]:
         return {
             '_reactors': self._reactors,
