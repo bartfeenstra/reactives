@@ -1,10 +1,17 @@
+from __future__ import annotations
+
 import copy
 from contextlib import suppress
 from typing import Any, Iterable
 
+try:
+    from typing import SupportsIndex  # type: ignore
+except ImportError:
+    from typing_extensions import SupportsIndex
+
 from reactives import scope
-from reactives.checks import is_reactive
-from reactives.controller import ReactorController
+from reactives.factory import Reactive
+from reactives.reactor import ReactorController
 
 
 class ReactiveDict(dict):
@@ -14,18 +21,18 @@ class ReactiveDict(dict):
         for value in dict.values(self):
             self._wire(value)
 
-    def __copy__(self) -> 'ReactiveDict':
+    def __copy__(self) -> ReactiveDict:
         copied = self.__class__(self)
         copied.react = ReactorController()
         copied.react.react(*self.react.reactors)
         return copied
 
     def _wire(self, value) -> None:
-        if is_reactive(value):
+        if isinstance(value, Reactive):
             value.react(self)
 
     def _unwire(self, value) -> None:
-        if is_reactive(value):
+        if isinstance(value, Reactive):
             value.react.shutdown(self)
 
     def clear(self) -> None:
@@ -65,10 +72,10 @@ class ReactiveDict(dict):
             self[key] = value
             return value
 
-    def update(self, other) -> None:
+    def update(self, *args, **kwargs) -> None:
         for value in super().values():
             self._unwire(value)
-        super().update(other)
+        super().update(*args, **kwargs)
         for value in super().values():
             self._wire(value)
         self.react.trigger()
@@ -132,18 +139,18 @@ class ReactiveList(list):
         for value in list.__iter__(self):
             self._wire(value)
 
-    def __copy__(self) -> 'ReactiveList':
+    def __copy__(self) -> ReactiveList:
         copied = self.__class__(self)
         scope.register(copied)
         copied.react = copy.copy(self.react)
         return copied
 
     def _wire(self, value) -> None:
-        if is_reactive(value):
+        if isinstance(value, Reactive):
             value.react(self)
 
     def _unwire(self, value) -> None:
-        if is_reactive(value):
+        if isinstance(value, Reactive):
             value.react.shutdown(self)
 
     def append(self, value) -> None:
@@ -158,7 +165,7 @@ class ReactiveList(list):
         self.react.trigger()
 
     @scope.register_self
-    def copy(self) -> 'ReactiveList':
+    def copy(self) -> ReactiveList:
         return copy.copy(self)
 
     @scope.register_self
@@ -177,7 +184,7 @@ class ReactiveList(list):
     def index(self, value, *args, **kwargs) -> int:
         return super().index(value, *args, **kwargs)
 
-    def insert(self, index: int, value) -> None:
+    def insert(self, index: SupportsIndex, value: Any) -> None:
         super().insert(index, value)
         self._wire(value)
         self.react.trigger()
@@ -223,7 +230,7 @@ class ReactiveList(list):
         return super().__getitem__(index)
 
     @scope.register_self
-    def __iadd__(self, other: Iterable) -> 'ReactiveList':
+    def __iadd__(self, other: Iterable) -> ReactiveList:
         for value in other:
             super().append(value)
             self._wire(value)
@@ -231,7 +238,7 @@ class ReactiveList(list):
         return self
 
     @scope.register_self
-    def __imul__(self, other) -> 'ReactiveList':
+    def __imul__(self, other) -> ReactiveList:
         for value in list.__iter__(self):
             self._unwire(value)
         super().__imul__(other)

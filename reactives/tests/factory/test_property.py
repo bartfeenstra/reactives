@@ -5,14 +5,26 @@ from unittest import TestCase
 from reactives import reactive
 from reactives import UnsupportedReactive
 from reactives.factory.property import _PropertyReactorController
+from reactives.factory.type import ReactiveInstance
 from reactives.tests import assert_not_reactor_called, assert_reactor_called, assert_in_scope
 
 
 class PropertyReactorControllerTest(TestCase):
+    class Foo:
+        @property
+        def foo(self):
+            """
+            Hiya!
+            Returns
+            -------
+
+            """
+            return None
+
     def test___copy__(self) -> None:
         @reactive
-        class Subject:
-            @reactive
+        class Subject(ReactiveInstance):
+            @reactive  # type: ignore
             @property
             def subject(self) -> None:
                 return
@@ -25,8 +37,8 @@ class PropertyReactorControllerTest(TestCase):
                     copied_sut.trigger()
 
     @reactive
-    class _ReactiveProperty:
-        @reactive
+    class _ReactiveProperty(ReactiveInstance):
+        @reactive  # type: ignore
         @property
         def subject(self) -> None:
             return
@@ -52,18 +64,18 @@ class ReactivePropertyTest(TestCase):
             pass
 
         @reactive
-        class Subject:
+        class Subject(ReactiveInstance):
             def __init__(self):
                 self._subject_called = False
 
-            @reactive
+            @reactive  # type: ignore
             @property
             def subject(self):
                 if not self._subject_called:
                     self._subject_called = True
                     return dependency()
 
-            @reactive
+            @reactive  # type: ignore
             @property
             def subject2(self):
                 if not self._subject_called:
@@ -90,19 +102,19 @@ class ReactivePropertyTest(TestCase):
 
     def test_fset(self) -> None:
         @reactive
-        class DependencyOne:
+        class DependencyOne(ReactiveInstance):
             pass
 
         @reactive
-        class DependencyTwo:
+        class DependencyTwo(ReactiveInstance):
             pass
 
         @reactive
-        class Subject:
+        class Subject(ReactiveInstance):
             def __init__(self):
                 self._subject = 123
 
-            @reactive
+            @reactive  # type: ignore
             @property
             def subject(self):
                 return self._subject
@@ -135,15 +147,15 @@ class ReactivePropertyTest(TestCase):
 
     def test_fdel(self) -> None:
         @reactive
-        class Dependency:
+        class Dependency(ReactiveInstance):
             pass
 
         @reactive
-        class Subject:
+        class Subject(ReactiveInstance):
             def __init__(self):
                 self._subject = 123
 
-            @reactive
+            @reactive  # type: ignore
             @property
             def subject(self):
                 return self._subject
@@ -170,17 +182,17 @@ class ReactivePropertyTest(TestCase):
 
         # dependency_one no longer being autowired should not cause the reactor to be called.
         del subject.subject
-        subject.react.getattr('subject').react.react_weakref(
-            assert_not_reactor_called())
+        with assert_not_reactor_called() as reactor:
+            subject.react.getattr('subject').react.react_weakref(reactor)
         dependency.react.trigger()
 
     def test_on_trigger_delete_without_deleter(self) -> None:
         @reactive
-        class Subject:
+        class Subject(ReactiveInstance):
             def __init__(self):
                 self._subject = 123
 
-            @reactive
+            @reactive  # type: ignore
             @property
             def subject(self):
                 return self._subject
@@ -191,11 +203,11 @@ class ReactivePropertyTest(TestCase):
 
     def test_on_trigger_delete_with_deleter(self) -> None:
         @reactive
-        class Subject:
+        class Subject(ReactiveInstance):
             def __init__(self):
                 self._subject = 123
 
-            @reactive
+            @reactive  # type: ignore
             @property
             def subject(self):
                 return self._subject
@@ -210,11 +222,11 @@ class ReactivePropertyTest(TestCase):
 
     def test_on_trigger_delete_with_deleter_but_on_trigger_delete_is_false(self) -> None:
         @reactive
-        class Subject:
+        class Subject(ReactiveInstance):
             def __init__(self):
                 self._subject = 123
 
-            @reactive(on_trigger_delete=False)
+            @reactive(on_trigger_delete=False)  # type: ignore
             @property
             def subject(self):
                 return self._subject

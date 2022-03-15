@@ -1,9 +1,10 @@
 import functools
 from typing import Any, Dict, Callable, Optional, TypeVar
 
-from reactives import scope, is_reactive, assert_reactive, ReactorController, reactive_factory, UnsupportedReactive
-from reactives.factory.type import InstanceAttribute, _InstanceReactorController
-
+from reactives import scope
+from reactives.factory import reactive_factory, UnsupportedReactive, Reactive
+from reactives.factory.type import InstanceAttribute, ReactiveInstance
+from reactives.reactor import ReactorController
 
 T = TypeVar('T')
 
@@ -13,7 +14,6 @@ class _PropertyReactorController(ReactorController):
         super().__init__()
         self._instance = instance
         self._deleter = deleter
-        self._dependencies = []
 
     def __getstate__(self) -> Dict[str, Any]:
         state = super().__getstate__()
@@ -60,23 +60,23 @@ class _ReactiveProperty(InstanceAttribute):
         return self._get__from_instance(instance, owner)
 
     def _get__from_instance(self, instance, owner=None):
-        assert_reactive(instance, _InstanceReactorController)
+        assert isinstance(instance, ReactiveInstance)
         reactive_instance_attribute = instance.react.getattr(self)
-        with scope.collect(reactive_instance_attribute, reactive_instance_attribute.react._dependencies):
+        with scope.collect(reactive_instance_attribute):
             return self._decorated_property.__get__(instance, owner)
 
     def __set__(self, instance, value) -> None:
         reactive_instance_attribute = instance.react.getattr(self)
-        scope.clear(reactive_instance_attribute, reactive_instance_attribute.react._dependencies)
+        scope.clear(reactive_instance_attribute)
         self._decorated_property.__set__(instance, value)
-        if is_reactive(value):
+        if isinstance(value, Reactive):
             reactive_instance_attribute.react._dependencies.append(value)
             value.react.react_weakref(reactive_instance_attribute)
         reactive_instance_attribute.react.trigger()
 
     def __delete__(self, instance) -> None:
         reactive_instance_attribute = instance.react.getattr(self)
-        scope.clear(reactive_instance_attribute, reactive_instance_attribute.react._dependencies)
+        scope.clear(reactive_instance_attribute)
         self._decorated_property.__delete__(instance)
         instance.react.getattr(self).react.trigger()
 
@@ -90,5 +90,6 @@ class _ReactiveProperty(InstanceAttribute):
 @reactive_factory(property)
 def _reactive_property(decorated_property: property, on_trigger_delete: bool = True):
     reactive_property = _ReactiveProperty(decorated_property, on_trigger_delete)
-    functools.update_wrapper(reactive_property, decorated_property)
+    # property is not technically a callable, but calling functools.update_wrapper() on it works, so ignore type errors.
+    functools.update_wrapper(reactive_property, decorated_property)  # type: ignore
     return reactive_property
