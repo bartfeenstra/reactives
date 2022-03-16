@@ -78,8 +78,7 @@ class ReactorControllerTest(TestCase):
         r_da.react(r_e)
 
         r_a.react.trigger()
-        self.assertEquals(['r_a', 'r_b', 'r_c', 'f_ca',
-                           'r_d', 'r_da', 'r_e'], order_tracker)
+        self.assertEqual(['r_a', 'r_b', 'r_c', 'f_ca', 'r_d', 'r_da', 'r_e'], order_tracker)
 
     def test_react_using_shortcut_with_reactor(self) -> None:
         sut = ReactorController()

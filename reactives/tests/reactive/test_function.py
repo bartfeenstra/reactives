@@ -42,7 +42,7 @@ class ReactiveFunctionTest(TestCase):
             subject.tracker.append(True)
         subject.tracker = []
         subject()
-        self.assertEquals([True], subject.tracker)
+        self.assertEqual([True], subject.tracker)
 
     def test_with_reactor(self) -> None:
         @reactive
@@ -107,7 +107,7 @@ class ReactiveFunctionTest(TestCase):
             subject.tracker.append(True)
         subject.tracker = []
         subject.react.trigger()
-        self.assertEquals([True], subject.tracker)
+        self.assertEqual([True], subject.tracker)
 
     def test_on_trigger_call_as_instance_method(self):
         @reactive
@@ -120,4 +120,4 @@ class ReactiveFunctionTest(TestCase):
                 self.tracker.append(True)
         subject = Subject()
         subject.react.getattr('subject').react.trigger()
-        self.assertEquals([True], subject.tracker)
+        self.assertEqual([True], subject.tracker)

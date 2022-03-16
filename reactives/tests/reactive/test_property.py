@@ -118,7 +118,7 @@ class ReactivePropertyTest(TestCase):
         # Setting dependency_one should cause the reactor to be called.
         with assert_reactor_called(subject.react.getattr('subject')):
             subject.subject = dependency_one
-            self.assertEquals(dependency_one, subject._subject)
+            self.assertEqual(dependency_one, subject._subject)
 
         # dependency_one being autowired should cause the reactor to be called.
         with assert_reactor_called(subject.react.getattr('subject')):
@@ -127,7 +127,7 @@ class ReactivePropertyTest(TestCase):
         # Setting dependency_two should cause the reactor to be called.
         with assert_reactor_called(subject.react.getattr('subject')):
             subject.subject = dependency_two
-            self.assertEquals(dependency_two, subject._subject)
+            self.assertEqual(dependency_two, subject._subject)
 
         # dependency_one no longer being autowired should not cause the reactor to be called.
         with assert_not_reactor_called(subject.react.getattr('subject')):
