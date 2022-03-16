@@ -14,7 +14,7 @@ flake8 --config ./flake8.ini ./reactives
 
 # Run Python tests with coverage.
 coverage erase
-PYTHONUTF8=1 coverage run -a -m nose2
+PYTHONUTF8=1 PYTHONWARNINGS=error coverage run -a -m nose2
 coverage report -m
 
 # Test the built Python package.
