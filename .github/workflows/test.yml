@@ -21,9 +21,6 @@ jobs:
           - name: 'Python 3.7'
             os: ubuntu-latest
             python: '3.7'
-          - name: 'Python 3.6'
-            os: ubuntu-latest
-            python: '3.6'
 
     steps:
       - name: Check out the source code

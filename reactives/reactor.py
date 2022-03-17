@@ -1,32 +1,34 @@
+from __future__ import annotations
 import copy
 import inspect
 import weakref
 from collections import deque
 from contextlib import contextmanager, suppress
+from typing import Sequence, Tuple, Optional, Dict, Set, Any, Iterator, cast, Callable, Union, List
 
-from reactives.typing import Reactor, ReactorDefinition
+from reactives.factory import Reactive
 
 try:
     from graphlib import TopologicalSorter
 except ImportError:
-    from graphlib_backport import TopologicalSorter
-from typing import Callable, Sequence, Tuple, Optional, Dict, Set, Any
+    from graphlib_backport import TopologicalSorter  # type: ignore
 
 
 class ReactorController:
     _trigger_suspended: bool = False
     _chain_is_reacting: bool = False
-    _chain_reactor_graph: Dict[Callable, Set[Callable]] = {}
+    _chain_reactor_graph: Dict[Reactor, Set[Reactor]] = {}
     _chain_reactors: deque = deque()
     _chain_current_reactor: Optional[Reactor] = None
 
     def __init__(self):
         self._reactors = []
+        self._dependencies: List[Reactive] = []
 
     def __call__(self, *args):
         self.react(*args)
 
-    def __copy__(self) -> 'ReactorController':
+    def __copy__(self) -> ReactorController:
         copied = self.__class__.__new__(self.__class__)
         copied._reactors = copy.copy(self._reactors)
         return copied
@@ -66,15 +68,14 @@ class ReactorController:
 
         ReactorController._chain_reactors = deque(TopologicalSorter(ReactorController._chain_reactor_graph).static_order())
 
-    def _expand_reactor(self, caller: Optional[Reactor], reactor: ReactorDefinition) -> Sequence[Tuple[Optional[Reactor], Reactor]]:
-        from reactives.checks import is_reactive
-
+    def _expand_reactor(self, caller: Optional[Reactor], reactor: ResolvableReactor) -> Iterator[Tuple[Optional[Reactor], Reactor]]:
         reactor = self._unweakref(reactor)
 
-        if is_reactive(reactor):
-            yield caller, reactor.react.trigger
-            for reactor_reactor in reactor.react._reactors:
-                yield from self._expand_reactor(reactor.react.trigger, reactor_reactor)
+        if isinstance(reactor, (ReactorController, Reactive)):
+            reactor_controller = resolve_reactor_controller(reactor)
+            yield caller, reactor_controller.trigger
+            for reactor_reactor in reactor_controller.reactors:
+                yield from self._expand_reactor(reactor_controller.trigger, reactor_reactor)
         else:
             yield caller, reactor
 
@@ -85,7 +86,7 @@ class ReactorController:
         try:
             while True:
                 try:
-                    ReactorController._chain_current_reactor = ReactorController._chain_reactors.popleft()
+                    ReactorController._chain_current_reactor = cast(Reactor, ReactorController._chain_reactors.popleft())
                 except IndexError:
                     return
 
@@ -113,17 +114,17 @@ class ReactorController:
 
     @classmethod
     @contextmanager
-    def suspend(cls) -> None:
+    def suspend(cls) -> Iterator[None]:
         original_suspended = ReactorController._trigger_suspended
         ReactorController._trigger_suspended = True
         yield
         ReactorController._trigger_suspended = original_suspended
 
-    def react(self, *reactors: ReactorDefinition) -> None:
+    def react(self, *reactors: ResolvableReactor) -> None:
         for reactor in reactors:
             self._reactors.append(reactor)
 
-    def shutdown(self, *reactors: ReactorDefinition) -> None:
+    def shutdown(self, *reactors: ResolvableReactor) -> None:
         from reactives import scope
 
         if not reactors:
@@ -138,7 +139,7 @@ class ReactorController:
                     if reactor == self_reactor:
                         del self._reactors[i]
 
-    def react_weakref(self, *reactors: ReactorDefinition) -> None:
+    def react_weakref(self, *reactors: ResolvableReactor) -> None:
         """
         Add a reactor using a weakref.
 
@@ -149,3 +150,25 @@ class ReactorController:
         """
         for reactor in reactors:
             self.react(self._weakref(reactor, self._reactors.remove))
+
+
+Reactor = Callable[[], Any]
+
+
+ResolvableReactor = Union[Reactor, ReactorController, Reactive]
+
+
+def resolve_reactor(reactor: ResolvableReactor) -> Iterator[Reactor]:
+    if isinstance(reactor, (ReactorController, Reactive)):
+        yield from resolve_reactor_controller(reactor).reactors
+        return
+    yield reactor
+
+
+ResolvableReactorController = Union[ReactorController, Reactive]
+
+
+def resolve_reactor_controller(reactor_controller: ResolvableReactorController) -> ReactorController:
+    if isinstance(reactor_controller, Reactive):
+        return reactor_controller.react
+    return reactor_controller

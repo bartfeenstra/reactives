@@ -3,7 +3,14 @@ from unittest import TestCase
 
 from parameterized import parameterized
 
-from reactives import ReactorController, is_reactive, assert_reactive
+from reactives.factory import assert_reactive, reactive, Reactive, UnsupportedReactive
+from reactives.reactor import ReactorController
+
+
+class reactive_Test(TestCase):
+    def test_with_unsupported_reactive(self) -> None:
+        with self.assertRaises(UnsupportedReactive):
+            reactive(999)
 
 
 class _NotReactive:
@@ -36,7 +43,7 @@ class AssertReactiveTest(TestCase):
         assert_reactive(_Reactive())
 
 
-class IsReactiveTest(TestCase):
+class ReactiveTest(TestCase):
     @parameterized.expand([
         (True,),
         (999,),
@@ -45,7 +52,7 @@ class IsReactiveTest(TestCase):
         (_NotReactiveWithAttribute(),),
     ])
     def test_with_invalid_reactive(self, reactive: Any) -> None:
-        self.assertFalse(is_reactive(reactive))
+        self.assertNotIsInstance(reactive, Reactive)
 
     def test_with_valid_reactive(self) -> None:
-        self.assertTrue(is_reactive(_Reactive()))
+        self.assertIsInstance(_Reactive(), Reactive)

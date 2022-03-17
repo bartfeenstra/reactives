@@ -1,39 +1,39 @@
 import functools
 from contextlib import contextmanager
-from typing import Optional, List, Callable
+from typing import Optional, List, Callable, Iterator
 
-from reactives.typing import Reactive, ReactorDefinition
+from reactives.factory import Reactive
 
-_dependencies: Optional[List[ReactorDefinition]] = None
+_dependencies: Optional[List[Reactive]] = None
 
 
 @contextmanager
-def collect(dependent: Reactive, dependencies: List[ReactorDefinition]) -> None:
+def collect(dependent: Reactive) -> Iterator[None]:
     global _dependencies
 
-    clear(dependent, dependencies)
+    clear(dependent)
 
     # Register the dependent to any existing scope before collecting its own.
     register(dependent)
 
     # Collect the dependencies.
     original_dependencies = _dependencies
-    _dependencies = dependencies
-    yield dependencies
+    _dependencies = dependent.react._dependencies
+    yield
     _dependencies = original_dependencies
 
     # Autowire the dependent to all collected dependencies.
-    for dependency in dependencies:
+    for dependency in dependent.react._dependencies:
         dependency.react.react_weakref(dependent)
 
 
-def clear(dependent: Reactive, dependencies: List[ReactorDefinition]):
-    for dependency in dependencies:
+def clear(dependent: Reactive):
+    for dependency in dependent.react._dependencies:
         dependency.react.shutdown(dependent)
-    dependencies.clear()
+    dependent.react._dependencies.clear()
 
 
-def register(dependent: ReactorDefinition) -> None:
+def register(dependent: Reactive) -> None:
     """
     Register a reactive if it's a dependency for another one.
     """
@@ -57,7 +57,7 @@ def register_self(decorated_function: Callable) -> Callable:
 
 
 @contextmanager
-def suspend() -> None:
+def suspend() -> Iterator[None]:
     global _dependencies
     original_dependencies = _dependencies
     _dependencies = None

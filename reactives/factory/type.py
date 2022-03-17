@@ -2,11 +2,11 @@ import copy
 import functools
 import inspect
 from contextlib import suppress
-from typing import Dict, Any, Type
+from typing import Dict, Any, Type, cast
+from warnings import warn
 
-from reactives.controller import ReactorController
-from reactives.factory import reactive_factory
-from reactives.typing import Reactive
+from reactives.factory import reactive_factory, Reactive
+from reactives.reactor import ReactorController
 
 
 class InstanceAttribute:
@@ -59,7 +59,7 @@ class _InstanceReactorController(ReactorController):
 
     def __copy__(self) -> ReactorController:
         self._initialize_reactive_instance_attributes()
-        copied = super().__copy__()
+        copied = cast(_InstanceReactorController, super().__copy__())
         copied._instance = self._instance
         copied._reactive_attributes = copy.copy(self._reactive_attributes)
         copied._initialized = True
@@ -97,8 +97,19 @@ class _InstanceReactorController(ReactorController):
             raise AttributeError(f'No reactive attribute "{name_or_attribute}" exists.')
 
 
+class ReactiveInstance(Reactive):
+    """
+    Define a reactive instance.
+    """
+
+    react: _InstanceReactorController
+
+
 @reactive_factory(type)
-def _reactive_type(decorated_class: Type) -> type:
+def _reactive_type(decorated_class: Type[ReactiveInstance]) -> type:
+    if not issubclass(decorated_class, ReactiveInstance):
+        warn(f'{decorated_class} was made reactive. For accurate type hinting it must also extend `{ReactiveInstance}`.')
+
     # Override the initializer to instantiate an instance-level reactor controller.
     original_init = decorated_class.__init__
 
@@ -106,9 +117,9 @@ def _reactive_type(decorated_class: Type) -> type:
     def _init(self, *args, **kwargs):
         self.react = _InstanceReactorController(self)
         original_init(self, *args, **kwargs)
-    decorated_class.__init__ = _init
+    setattr(decorated_class, '__init__', _init)
 
-    original_copy = decorated_class.__copy__ if hasattr(decorated_class, '__copy__') else None
+    original_copy = getattr(decorated_class, '__copy__', None)
 
     def _copy(self):
         if original_copy is not None:
@@ -121,6 +132,6 @@ def _reactive_type(decorated_class: Type) -> type:
         return copied
     if original_copy is not None:
         functools.update_wrapper(_copy, original_copy)
-    decorated_class.__copy__ = _copy
+    setattr(decorated_class, '__copy__', _copy)
 
     return decorated_class

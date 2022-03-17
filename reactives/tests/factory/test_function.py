@@ -4,6 +4,7 @@ from unittest import TestCase
 
 from reactives import reactive
 from reactives.factory.function import _FunctionReactorController
+from reactives.factory.type import ReactiveInstance
 from reactives.tests import assert_reactor_called, assert_not_reactor_called
 
 
@@ -20,7 +21,7 @@ class ReactiveFunctionControllerTest(TestCase):
                     copied_sut.trigger()
 
     @reactive
-    class _Reactive:
+    class _Reactive(ReactiveInstance):
         @reactive
         def subject(self) -> None:
             pass
@@ -80,7 +81,7 @@ class ReactiveFunctionTest(TestCase):
             pass
 
         @reactive
-        class Subject:
+        class Subject(ReactiveInstance):
             def __init__(self):
                 self.called = False
 
@@ -111,7 +112,7 @@ class ReactiveFunctionTest(TestCase):
 
     def test_on_trigger_call_as_instance_method(self):
         @reactive
-        class Subject:
+        class Subject(ReactiveInstance):
             def __init__(self):
                 self.tracker = []
 

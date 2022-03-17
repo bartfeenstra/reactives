@@ -6,11 +6,12 @@ from unittest import TestCase
 
 from reactives import reactive
 from reactives.collections import ReactiveList, ReactiveDict
+from reactives.factory.type import ReactiveInstance
 from reactives.tests import assert_scope_empty, assert_reactor_called, assert_in_scope, assert_not_reactor_called
 
 
 @reactive
-class _Reactive:
+class _Reactive(ReactiveInstance):
     pass
 
 

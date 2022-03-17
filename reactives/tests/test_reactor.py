@@ -2,8 +2,8 @@ import copy
 import gc
 from unittest import TestCase
 
-from reactives import ReactorController
-from reactives.tests import assert_reactor_called, assert_not_reactor_called
+from reactives.reactor import ReactorController, resolve_reactor, resolve_reactor_controller
+from reactives.tests import assert_reactor_called, assert_not_reactor_called, AssertNotCalledReactor
 
 
 class _NotReactive:
@@ -104,7 +104,7 @@ class ReactorControllerTest(TestCase):
 
     def test_react_weakref(self) -> None:
         sut = ReactorController()
-        reactor = assert_not_reactor_called()
+        reactor = AssertNotCalledReactor()
         sut.react_weakref(reactor)
         del reactor
         gc.collect()
@@ -116,3 +116,45 @@ class ReactorControllerTest(TestCase):
             sut.react_weakref(reactor)
             with ReactorController.suspend():
                 sut.trigger()
+
+
+class ResolveReactorTest(TestCase):
+    def test_with_reactor(self) -> None:
+        def _reactor() -> None:
+            pass
+        resolvable = _reactor
+        self.assertSequenceEqual((resolvable,), tuple(resolve_reactor(resolvable)))
+
+    def test_with_reactor_controller(self) -> None:
+        def _reactor() -> None:
+            pass
+        resolvable = ReactorController()
+        resolvable.react(_reactor)
+        self.assertSequenceEqual((_reactor,), tuple(resolve_reactor(resolvable)))
+
+    def test_with_reactive(self) -> None:
+        def _reactor() -> None:
+            pass
+
+        class _Reactive():
+            def __init__(self):
+                self.react = ReactorController()
+        resolvable = _Reactive()
+        resolvable.react(_reactor)
+        self.assertSequenceEqual((_reactor,), tuple(resolve_reactor(resolvable)))
+
+
+class ResolveReactorControllerTest(TestCase):
+    def test_with_reactor_controller(self) -> None:
+        reactor_controller = ReactorController()
+        resolvable = reactor_controller
+        self.assertEqual(reactor_controller, resolve_reactor_controller(resolvable))
+
+    def test_with_reactive(self) -> None:
+        reactor_controller = ReactorController()
+
+        class _Reactive():
+            def __init__(self):
+                self.react = reactor_controller
+        resolvable = _Reactive()
+        self.assertEqual(reactor_controller, resolve_reactor_controller(resolvable))

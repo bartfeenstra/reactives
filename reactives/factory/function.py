@@ -1,16 +1,18 @@
+from __future__ import annotations
+
 import functools
 from typing import Callable, Optional, Dict, Any
 
-from reactives import scope, ReactorController, assert_reactive, Reactive, reactive_factory
+from reactives import scope
+from reactives.factory import reactive_factory, Reactive
 from reactives.factory.type import InstanceAttribute
-from reactives.typing import function
+from reactives.reactor import ReactorController
 
 
 class _FunctionReactorController(ReactorController):
-    def __init__(self, on_trigger_call: Optional[callable] = None):
+    def __init__(self, on_trigger_call: Optional[Callable] = None):
         super().__init__()
         self._on_trigger_call = on_trigger_call
-        self._dependencies = []
 
     def __getstate__(self) -> Dict[str, Any]:
         state = super().__getstate__()
@@ -36,7 +38,7 @@ class _FunctionReactorController(ReactorController):
 
 
 class _InstanceAttributeOnTrigger:
-    def __init__(self, reactive_method: '_ReactiveFunction', instance):
+    def __init__(self, reactive_method: _ReactiveFunction, instance):
         self._reactive_method = reactive_method
         self._instance = instance
 
@@ -45,7 +47,7 @@ class _InstanceAttributeOnTrigger:
 
 
 class _ReactiveFunction(InstanceAttribute):
-    def __init__(self, decorated_function: callable, on_trigger_call: bool):
+    def __init__(self, decorated_function: Callable, on_trigger_call: bool):
         self._decorated_function = decorated_function
         self._on_trigger_call = on_trigger_call
         self.react = _FunctionReactorController(
@@ -57,14 +59,13 @@ class _ReactiveFunction(InstanceAttribute):
             _InstanceAttributeOnTrigger(self, instance) if self._on_trigger_call else None,
         )
 
-    def __get__(self, instance, owner):
+    def __get__(self, instance: Optional[Reactive], owner):
         if instance is None:
             return self
 
         def call(*args, **kwargs):
-            assert_reactive(instance)
             reactive_instance_attribute = instance.react.getattr(self)
-            with scope.collect(reactive_instance_attribute, reactive_instance_attribute.react._dependencies):
+            with scope.collect(reactive_instance_attribute):
                 return self._decorated_function(instance, *args, **kwargs)
         functools.update_wrapper(call, self)
 
@@ -74,12 +75,12 @@ class _ReactiveFunction(InstanceAttribute):
         return self._call(self, *args, **kwargs)
 
     def _call(self, reactive_function: Reactive, *args, **kwargs):
-        with scope.collect(reactive_function, reactive_function.react._dependencies):
+        with scope.collect(reactive_function):
             return self._decorated_function(*args, **kwargs)
 
 
-@reactive_factory(function)
-def _reactive_function(decorated_function: function, on_trigger_call: bool = False) -> Callable:
+@reactive_factory(type(lambda: ()))
+def _reactive_function(decorated_function: Callable, on_trigger_call: bool = False) -> Callable:
     reactive_function = _ReactiveFunction(decorated_function, on_trigger_call)
     functools.update_wrapper(reactive_function, decorated_function)
     return reactive_function
