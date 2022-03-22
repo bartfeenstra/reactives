@@ -1,8 +1,13 @@
 import functools
 from typing import Any, Dict, Callable, Optional, TypeVar
 
+try:
+    from typing import Self  # type: ignore
+except ImportError:
+    from typing_extensions import Self  # type: ignore
+
 from reactives import scope
-from reactives.factory import reactive_factory, UnsupportedReactive, Reactive
+from reactives.factory import reactive_factory, UnsupportedReactive, Reactive, reactive
 from reactives.factory.type import InstanceAttribute, ReactiveInstance
 from reactives.reactor import ReactorController
 
@@ -28,7 +33,7 @@ class _PropertyReactorController(ReactorController):
         self._deleter = state['_deleter']
         self._dependencies = state['_dependencies']
 
-    def __copy__(self):
+    def __copy__(self) -> Self:
         copied = super().__copy__()
         copied._instance = self._instance
         copied._deleter = self._deleter
@@ -54,13 +59,14 @@ class _ReactiveProperty(InstanceAttribute):
             self._decorated_property.fdel if self._on_trigger_delete else None,
         )
 
-    def __get__(self, instance, owner=None) -> Any:
+    def __get__(self, instance: Optional[ReactiveInstance], owner=None) -> Any:
         if instance is None:
             return self
         return self._get__from_instance(instance, owner)
 
-    def _get__from_instance(self, instance, owner=None):
-        assert isinstance(instance, ReactiveInstance)
+    def _get__from_instance(self, instance: ReactiveInstance, owner=None) -> Any:
+        if not isinstance(instance, ReactiveInstance):
+            raise ValueError(f'Cannot access a reactive property on {instance}. Did you forget to decorate {type(instance)} with @{reactive.__name__}?')
         reactive_instance_attribute = instance.react.getattr(self)
         with scope.collect(reactive_instance_attribute):
             return self._decorated_property.__get__(instance, owner)
@@ -88,7 +94,7 @@ class _ReactiveProperty(InstanceAttribute):
 
 
 @reactive_factory(property)
-def _reactive_property(decorated_property: property, on_trigger_delete: bool = True):
+def _reactive_property(decorated_property: property, on_trigger_delete: bool = True) -> InstanceAttribute:
     reactive_property = _ReactiveProperty(decorated_property, on_trigger_delete)
     # property is not technically a callable, but calling functools.update_wrapper() on it works, so ignore type errors.
     functools.update_wrapper(reactive_property, decorated_property)  # type: ignore

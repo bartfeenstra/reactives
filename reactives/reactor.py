@@ -6,6 +6,11 @@ from collections import deque
 from contextlib import contextmanager, suppress
 from typing import Sequence, Tuple, Optional, Dict, Set, Any, Iterator, cast, Callable, Union, List
 
+try:
+    from typing import Self  # type: ignore
+except ImportError:
+    from typing_extensions import Self  # type: ignore
+
 from reactives.factory import Reactive
 
 try:
@@ -28,7 +33,7 @@ class ReactorController:
     def __call__(self, *args):
         self.react(*args)
 
-    def __copy__(self) -> ReactorController:
+    def __copy__(self) -> Self:
         copied = self.__class__.__new__(self.__class__)
         copied._reactors = copy.copy(self._reactors)
         return copied

@@ -2,8 +2,13 @@ import copy
 import functools
 import inspect
 from contextlib import suppress
-from typing import Dict, Any, Type, cast
+from typing import Dict, Any, Type
 from warnings import warn
+
+try:
+    from typing import Self  # type: ignore
+except ImportError:
+    from typing_extensions import Self  # type: ignore
 
 from reactives.factory import reactive_factory, Reactive
 from reactives.reactor import ReactorController
@@ -14,7 +19,7 @@ class InstanceAttribute:
         raise NotImplementedError
 
 
-class _ReactiveInstanceAttribute:
+class _ReactiveInstanceAttribute(Reactive):
     def __init__(self, reactor_controller: ReactorController):
         self.react = reactor_controller
 
@@ -57,9 +62,9 @@ class _InstanceReactorController(ReactorController):
         self._reactive_attributes = state['_reactive_attributes']
         self._initialized = False
 
-    def __copy__(self) -> ReactorController:
+    def __copy__(self) -> Self:
         self._initialize_reactive_instance_attributes()
-        copied = cast(_InstanceReactorController, super().__copy__())
+        copied = super().__copy__()
         copied._instance = self._instance
         copied._reactive_attributes = copy.copy(self._reactive_attributes)
         copied._initialized = True
@@ -100,15 +105,18 @@ class _InstanceReactorController(ReactorController):
 class ReactiveInstance(Reactive):
     """
     Define a reactive instance.
+
+    Although this does not extend reactives.factory.Reactive, it will pass isinstance(x, reactives.factory.Reactive)
+    checks.
     """
 
     react: _InstanceReactorController
 
 
 @reactive_factory(type)
-def _reactive_type(decorated_class: Type[ReactiveInstance]) -> type:
+def _reactive_type(decorated_class: Type[ReactiveInstance]) -> Type[ReactiveInstance]:
     if not issubclass(decorated_class, ReactiveInstance):
-        warn(f'{decorated_class} was made reactive. For accurate type hinting it must also extend `{ReactiveInstance}`.')
+        warn(f'{decorated_class} was made reactive. For accurate type hinting it must also extend `{ReactiveInstance}`.', stacklevel=2)
 
     # Override the initializer to instantiate an instance-level reactor controller.
     original_init = decorated_class.__init__
