@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from reactives import scope
+from reactives import scope, Reactive
 from reactives.reactor import ReactorController
 
 
@@ -13,7 +13,7 @@ class _NotReactiveWithAttribute:
         self.react = None
 
 
-class _Reactive:
+class _Reactive(Reactive):
     def __init__(self):
         self.react = ReactorController()
 

@@ -61,7 +61,8 @@ SETUP = {
         ])
     ],
     'package_data': {
-        'betty': [
+        'reactives': [
+            os.path.join(os.path.dirname(__file__), 'reactives', 'py.typed'),
             # Include the test API.
             os.path.join(os.path.dirname(__file__), 'reactives', 'tests', '__init__.py'),
          ]

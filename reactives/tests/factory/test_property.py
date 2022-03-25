@@ -1,5 +1,6 @@
 import copy
 import pickle
+from typing import Optional
 from unittest import TestCase
 
 from reactives import reactive
@@ -13,12 +14,6 @@ class PropertyReactorControllerTest(TestCase):
     class Foo:
         @property
         def foo(self):
-            """
-            Hiya!
-            Returns
-            -------
-
-            """
             return None
 
     def test___copy__(self) -> None:
@@ -153,7 +148,7 @@ class ReactivePropertyTest(TestCase):
         @reactive
         class Subject(ReactiveInstance):
             def __init__(self):
-                self._subject = 123
+                self._subject: Optional[int] = 123
 
             @reactive  # type: ignore
             @property
@@ -205,7 +200,7 @@ class ReactivePropertyTest(TestCase):
         @reactive
         class Subject(ReactiveInstance):
             def __init__(self):
-                self._subject = 123
+                self._subject: Optional[int] = 123
 
             @reactive  # type: ignore
             @property
@@ -224,7 +219,7 @@ class ReactivePropertyTest(TestCase):
         @reactive
         class Subject(ReactiveInstance):
             def __init__(self):
-                self._subject = 123
+                self._subject: Optional[int] = 123
 
             @reactive(on_trigger_delete=False)  # type: ignore
             @property

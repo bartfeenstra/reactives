@@ -4,8 +4,7 @@ import copy
 import pickle
 from unittest import TestCase
 
-from reactives import assert_reactive
-from reactives import reactive
+from reactives.factory import reactive, Reactive
 from reactives.factory.type import _InstanceReactorController, ReactiveInstance
 from reactives.tests import assert_reactor_called, assert_not_reactor_called
 
@@ -29,7 +28,7 @@ class InstanceReactorControllerTest(TestCase):
             def subject(self):
                 pass
         sut = _InstanceReactorController(Subject())
-        assert_reactive(sut.getattr('subject'))
+        self.assertIsInstance(sut.getattr('subject'), Reactive)
 
     def test_getattr_with_non_existent_reactive_attribute(self) -> None:
         @reactive
