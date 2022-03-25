@@ -14,7 +14,7 @@ from reactives.factory import Reactive
 from reactives.reactor import ReactorController
 
 
-class ReactiveDict(dict):
+class ReactiveDict(dict, Reactive):
     def __init__(self, *args, **kwargs):
         self.react = ReactorController()
         super().__init__(*args, **kwargs)
@@ -114,11 +114,12 @@ class ReactiveDict(dict):
     def __ne__(self, other):
         return super().__ne__(other)
 
-    # dict.__reversed__() was added in Python 3.7.
+    # dict.__reversed__() was added in Python 3.8.
     if hasattr(dict, '__reversed__'):
         @scope.register_self
         def __reversed__(self):
-            return super().__reversed__()
+            # Mypy cannot tell we're only calling the parent method in Python >=3.8, so we have to suppress errors.
+            return super().__reversed__()  # type: ignore
 
     def __setitem__(self, key, value):
         super().__setitem__(key, value)
@@ -132,7 +133,7 @@ class ReactiveDict(dict):
         return super().__sizeof__()
 
 
-class ReactiveList(list):
+class ReactiveList(list, Reactive):
     def __init__(self, *args, **kwargs):
         self.react = ReactorController()
         super().__init__(*args, **kwargs)

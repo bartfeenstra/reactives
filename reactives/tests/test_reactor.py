@@ -2,20 +2,12 @@ import copy
 import gc
 from unittest import TestCase
 
+from reactives import Reactive
 from reactives.reactor import ReactorController, resolve_reactor, resolve_reactor_controller
 from reactives.tests import assert_reactor_called, assert_not_reactor_called, AssertNotCalledReactor
 
 
-class _NotReactive:
-    pass
-
-
-class _NotReactiveWithAttribute:
-    def __init__(self):
-        self.react = None
-
-
-class _Reactive:
+class _Reactive(Reactive):
     def __init__(self):
         self.react = ReactorController()
 
@@ -136,7 +128,7 @@ class ResolveReactorTest(TestCase):
         def _reactor() -> None:
             pass
 
-        class _Reactive():
+        class _Reactive(Reactive):
             def __init__(self):
                 self.react = ReactorController()
         resolvable = _Reactive()
@@ -153,7 +145,7 @@ class ResolveReactorControllerTest(TestCase):
     def test_with_reactive(self) -> None:
         reactor_controller = ReactorController()
 
-        class _Reactive():
+        class _Reactive(Reactive):
             def __init__(self):
                 self.react = reactor_controller
         resolvable = _Reactive()

@@ -46,8 +46,9 @@ class _PropertyReactorController(ReactorController):
         super().trigger()
 
 
-class _ReactiveProperty(InstanceAttribute):
-    def __init__(self, decorated_property: property, on_trigger_delete: bool):
+class _ReactiveProperty(property, InstanceAttribute):
+    def __init__(self, decorated_property: property, on_trigger_delete: bool, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         if not decorated_property.fget:
             raise UnsupportedReactive('Properties must have a getter to be made reactive.')
         self._decorated_property = decorated_property
@@ -94,7 +95,7 @@ class _ReactiveProperty(InstanceAttribute):
 
 
 @reactive_factory(property)
-def _reactive_property(decorated_property: property, on_trigger_delete: bool = True) -> InstanceAttribute:
+def _reactive_property(decorated_property: property, on_trigger_delete: bool = True) -> _ReactiveProperty:
     reactive_property = _ReactiveProperty(decorated_property, on_trigger_delete)
     # property is not technically a callable, but calling functools.update_wrapper() on it works, so ignore type errors.
     functools.update_wrapper(reactive_property, decorated_property)  # type: ignore

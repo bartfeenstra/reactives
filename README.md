@@ -12,9 +12,10 @@ won't have to pull for changes), but if a reactor needs to know what exactly cha
 itself.
 
 ## Usage
-For any type to be reactive, it must have a `react` attribute containing a `reactives.ReactorController`. The most
-common way to achieve this, is to decorate that type with `@reactives.reactive`. Some classes are provided that are
-reactive and can be instantiated or inherited from directly.
+For any type to be reactive, it must extend `reactives.factory.Reactive` and set a `reactives.ReactorController`
+instance in its `__init__()` method. For any of the types supported by default, you only have to decorate your type or
+value with `@reactives.reactive`. Additionally, some classes are provided that are reactive and can be instantiated or
+inherited from directly.
 
 ### Custom classes
 Decorate a class to make its individual instances reactive:

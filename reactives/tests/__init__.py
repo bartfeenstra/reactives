@@ -6,7 +6,7 @@ from reactives.factory import Reactive
 from reactives.reactor import Reactor, ReactorController, ResolvableReactorController, resolve_reactor_controller
 
 
-class _DummyReactive:
+class _DummyReactive(Reactive):
     def __init__(self):
         self.react = ReactorController()
 
