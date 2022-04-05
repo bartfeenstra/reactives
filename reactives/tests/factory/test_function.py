@@ -33,7 +33,7 @@ class ReactiveFunctionControllerTest(TestCase):
         unpickled_subject = pickle.loads(pickle.dumps(subject))
         with assert_not_reactor_called(subject):
             with assert_reactor_called(unpickled_subject):
-                unpickled_subject.react.getattr('subject').react.trigger()
+                unpickled_subject.react['subject'].react.trigger()
 
 
 class ReactiveFunctionTest(TestCase):
@@ -120,5 +120,5 @@ class ReactiveFunctionTest(TestCase):
             def subject(self):
                 self.tracker.append(True)
         subject = Subject()
-        subject.react.getattr('subject').react.trigger()
+        subject.react['subject'].react.trigger()
         self.assertEqual([True], subject.tracker)

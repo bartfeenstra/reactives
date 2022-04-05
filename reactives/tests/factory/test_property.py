@@ -45,7 +45,7 @@ class PropertyReactorControllerTest(TestCase):
         unpickled_subject = pickle.loads(pickle.dumps(subject))
         with assert_not_reactor_called(subject):
             with assert_reactor_called(unpickled_subject):
-                unpickled_subject.react.getattr('subject').react.trigger()
+                unpickled_subject.react['subject'].react.trigger()
 
 
 class ReactivePropertyTest(TestCase):
@@ -80,7 +80,7 @@ class ReactivePropertyTest(TestCase):
         subject = Subject()
 
         with assert_reactor_called(subject):
-            with assert_in_scope(subject.react.getattr('subject')):
+            with assert_in_scope(subject.react['subject']):
                 # Call the reactive for the first time. This should result in dependency() being autowired.
                 subject.subject
 
@@ -88,7 +88,7 @@ class ReactivePropertyTest(TestCase):
             dependency.react.trigger()
 
             # Call the reactive again. This should result in dependency() being ignored and not to be autowired again.
-            with assert_in_scope(subject.react.getattr('subject')):
+            with assert_in_scope(subject.react['subject']):
                 subject.subject
 
         # dependency() no longer being autowired should not cause the reactor to be called.
@@ -123,21 +123,21 @@ class ReactivePropertyTest(TestCase):
         dependency_two = DependencyTwo()
 
         # Setting dependency_one should cause the reactor to be called.
-        with assert_reactor_called(subject.react.getattr('subject')):
+        with assert_reactor_called(subject.react['subject']):
             subject.subject = dependency_one
             self.assertEqual(dependency_one, subject._subject)
 
         # dependency_one being autowired should cause the reactor to be called.
-        with assert_reactor_called(subject.react.getattr('subject')):
+        with assert_reactor_called(subject.react['subject']):
             dependency_one.react.trigger()
 
         # Setting dependency_two should cause the reactor to be called.
-        with assert_reactor_called(subject.react.getattr('subject')):
+        with assert_reactor_called(subject.react['subject']):
             subject.subject = dependency_two
             self.assertEqual(dependency_two, subject._subject)
 
         # dependency_one no longer being autowired should not cause the reactor to be called.
-        with assert_not_reactor_called(subject.react.getattr('subject')):
+        with assert_not_reactor_called(subject.react['subject']):
             dependency_one.react.trigger()
 
     def test_fdel(self) -> None:
@@ -166,7 +166,7 @@ class ReactivePropertyTest(TestCase):
         subject = Subject()
 
         # Even if the property's setter and getter weren't called, deletion should cause the reactor to be called.
-        with assert_reactor_called(subject.react.getattr('subject')):
+        with assert_reactor_called(subject.react['subject']):
             del subject.subject
         self.assertIsNone(subject._subject)
 
@@ -178,7 +178,7 @@ class ReactivePropertyTest(TestCase):
         # dependency_one no longer being autowired should not cause the reactor to be called.
         del subject.subject
         with assert_not_reactor_called() as reactor:
-            subject.react.getattr('subject').react.react_weakref(reactor)
+            subject.react['subject'].react.react_weakref(reactor)
         dependency.react.trigger()
 
     def test_on_trigger_delete_without_deleter(self) -> None:
@@ -193,7 +193,7 @@ class ReactivePropertyTest(TestCase):
                 return self._subject
 
         subject = Subject()
-        subject.react.getattr('subject').react.trigger()
+        subject.react['subject'].react.trigger()
         self.assertEqual(123, subject._subject)
 
     def test_on_trigger_delete_with_deleter(self) -> None:
@@ -212,7 +212,7 @@ class ReactivePropertyTest(TestCase):
                 self._subject = None
 
         subject = Subject()
-        subject.react.getattr('subject').react.trigger()
+        subject.react['subject'].react.trigger()
         self.assertIsNone(subject._subject)
 
     def test_on_trigger_delete_with_deleter_but_on_trigger_delete_is_false(self) -> None:
@@ -231,5 +231,5 @@ class ReactivePropertyTest(TestCase):
                 self._subject = None
 
         subject = Subject()
-        subject.react.getattr('subject').react.trigger()
+        subject.react['subject'].react.trigger()
         self.assertEqual(123, subject._subject)

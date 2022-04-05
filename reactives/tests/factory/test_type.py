@@ -39,6 +39,24 @@ class InstanceReactorControllerTest(TestCase):
         with self.assertRaises(AttributeError):
             sut.getattr('subject')
 
+    def test___getitem___with_reactive_attribute(self) -> None:
+        @reactive
+        class Subject(ReactiveInstance):
+            @reactive
+            def subject(self):
+                pass
+        sut = _InstanceReactorController(Subject())
+        self.assertIsInstance(sut['subject'], Reactive)
+
+    def test___getitem___with_non_existent_reactive_attribute(self) -> None:
+        @reactive
+        class Subject(ReactiveInstance):
+            def subject(self):
+                pass
+        sut = _InstanceReactorController(Subject())
+        with self.assertRaises(AttributeError):
+            sut['subject']
+
 
 class ReactiveTypeTest(TestCase):
     @reactive
@@ -99,7 +117,7 @@ class ReactiveTypeTest(TestCase):
             def subject(self) -> None:
                 pass
         subject = Subject()
-        with assert_not_reactor_called(subject.react.getattr('subject')):
+        with assert_not_reactor_called(subject.react['subject']):
             Subject().react.trigger()
 
     def test_instance_attribute_trigger_without_reactors(self) -> None:
@@ -108,7 +126,7 @@ class ReactiveTypeTest(TestCase):
             @reactive
             def subject(self) -> None:
                 pass
-        Subject().react.getattr('subject').react.trigger()
+        Subject().react['subject'].react.trigger()
 
     def test_instance_attribute_trigger_with_instance_reactor(self) -> None:
         @reactive
@@ -118,7 +136,7 @@ class ReactiveTypeTest(TestCase):
                 pass
         subject = Subject()
         with assert_reactor_called(subject):
-            subject.react.getattr('subject').react.trigger()
+            subject.react['subject'].react.trigger()
 
     def test_instance_attribute_trigger_with_instance_attribute_reactor(self) -> None:
         @reactive
@@ -127,8 +145,8 @@ class ReactiveTypeTest(TestCase):
             def subject(self) -> None:
                 pass
         subject = Subject()
-        with assert_reactor_called(subject.react.getattr('subject')):
-            subject.react.getattr('subject').react.trigger()
+        with assert_reactor_called(subject.react['subject']):
+            subject.react['subject'].react.trigger()
 
     def test_without_subclass_should_warn(self) -> None:
         with self.assertWarns(UserWarning):

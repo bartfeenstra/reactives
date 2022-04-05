@@ -57,8 +57,8 @@ class Apple:
         pass
 
 apple = Apple()
-apple.react.getattr('apple').react(lambda: print('The apple got triggered!'))
-apple.react.getattr('apple').react.trigger()
+apple.react['apple'].react(lambda: print('The apple got triggered!'))
+apple.react['apple'].react.trigger()
 # >>> "The apple got triggered!"
 ```
 Reactive methods must be accessed through their instance, because `Apple.apple` would yield the class method.
@@ -89,8 +89,8 @@ class Apple:
         return 'I got you something!'
 
 apple = Apple()
-apple.react.getattr('apple').react(lambda: print('The apple got triggered!'))
-apple.react.getattr('apple').react.trigger()
+apple.react['apple'].react(lambda: print('The apple got triggered!'))
+apple.react['apple'].react.trigger()
 # >>> "The apple got triggered!"
 ```
 
@@ -117,7 +117,7 @@ class Apple:
 apple = Apple()
 print(apple.apple)
 # >>> "I got you something!"
-apple.react.getattr('apple').react().trigger()
+apple.react['apple'].react().trigger()
 print(apple.apple)
 # >>> "I got you nothing!"
 ```
@@ -145,7 +145,7 @@ class Apple:
 apple = Apple()
 print(apple.apple)
 # >>> "I got you something!"
-apple.react.getattr('apple').react().trigger()
+apple.react['apple'].react().trigger()
 print(apple.apple)
 # >>> "I got you something!"
 ```
@@ -169,7 +169,7 @@ class Apple:
         self._something = something
 
 apple = Apple()
-apple.react.getattr('apple').react(lambda: print('The apple got triggered!'))
+apple.react['apple'].react(lambda: print('The apple got triggered!'))
 apple.apple = 'I got you something else!'
 # >>> "The apple got triggered!"
 ```

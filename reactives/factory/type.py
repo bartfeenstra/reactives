@@ -101,6 +101,9 @@ class _InstanceReactorController(ReactorController):
         except KeyError:
             raise AttributeError(f'No reactive attribute "{name_or_attribute}" exists.')
 
+    def __getitem__(self, name_or_attribute: Any) -> Reactive:
+        return self.getattr(name_or_attribute)
+
 
 class ReactiveInstance(Reactive):
     """
