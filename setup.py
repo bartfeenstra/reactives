@@ -1,15 +1,15 @@
 """Integrates Reactives with Python's setuptools."""
 
-import os
+from pathlib import Path
 
 from setuptools import setup, find_packages
 
-ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIRECTORY_PATH = Path(__file__).resolve().parent
 
-with open('/'.join((ROOT_PATH, 'VERSION'))) as f:
+with open(ROOT_DIRECTORY_PATH / 'VERSION') as f:
     VERSION = f.read()
 
-with open('/'.join((ROOT_PATH, 'README.md'))) as f:
+with open(ROOT_DIRECTORY_PATH / 'README.md') as f:
     long_description = f.read()
 
 SETUP = {
@@ -62,9 +62,9 @@ SETUP = {
     ],
     'package_data': {
         'reactives': [
-            os.path.join(os.path.dirname(__file__), 'reactives', 'py.typed'),
+            str(ROOT_DIRECTORY_PATH / 'reactives' / 'py.typed'),
             # Include the test API.
-            os.path.join(os.path.dirname(__file__), 'reactives', 'tests', '__init__.py'),
+            str(ROOT_DIRECTORY_PATH / 'reactives' / 'tests' / '__init__.py'),
          ]
     },
 }
