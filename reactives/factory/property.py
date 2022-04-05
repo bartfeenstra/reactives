@@ -68,12 +68,12 @@ class _ReactiveProperty(property, InstanceAttribute):
     def _get__from_instance(self, instance: ReactiveInstance, owner=None) -> Any:
         if not isinstance(instance, ReactiveInstance):
             raise ValueError(f'Cannot access a reactive property on {instance}. Did you forget to decorate {type(instance)} with @{reactive.__name__}?')
-        reactive_instance_attribute = instance.react.getattr(self)
+        reactive_instance_attribute = instance.react[self]
         with scope.collect(reactive_instance_attribute):
             return self._decorated_property.__get__(instance, owner)
 
     def __set__(self, instance, value) -> None:
-        reactive_instance_attribute = instance.react.getattr(self)
+        reactive_instance_attribute = instance.react[self]
         scope.clear(reactive_instance_attribute)
         self._decorated_property.__set__(instance, value)
         if isinstance(value, Reactive):
@@ -82,10 +82,10 @@ class _ReactiveProperty(property, InstanceAttribute):
         reactive_instance_attribute.react.trigger()
 
     def __delete__(self, instance) -> None:
-        reactive_instance_attribute = instance.react.getattr(self)
+        reactive_instance_attribute = instance.react[self]
         scope.clear(reactive_instance_attribute)
         self._decorated_property.__delete__(instance)
-        instance.react.getattr(self).react.trigger()
+        instance.react[self].react.trigger()
 
     def setter(self, *args, **kwargs):
         return _ReactiveProperty(self._decorated_property.setter(*args, **kwargs), self._on_trigger_delete)

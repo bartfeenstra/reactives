@@ -49,7 +49,7 @@ class _InstanceAttributeOnTrigger:
         self._instance = instance
 
     def __call__(self):
-        self._reactive_method._call(self._instance.react.getattr(self._reactive_method), self._instance)
+        self._reactive_method._call(self._instance.react[self._reactive_method], self._instance)
 
 
 class _ReactiveFunction(InstanceAttribute, Reactive):
@@ -70,7 +70,7 @@ class _ReactiveFunction(InstanceAttribute, Reactive):
             return self
 
         def call(*args, **kwargs):
-            reactive_instance_attribute = cast(ReactiveInstance, instance).react.getattr(self)
+            reactive_instance_attribute = cast(ReactiveInstance, instance).react[self]
             with scope.collect(reactive_instance_attribute):
                 return self._decorated_function(instance, *args, **kwargs)
         functools.update_wrapper(call, self)
