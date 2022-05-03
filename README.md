@@ -101,18 +101,18 @@ from reactives import reactive
 @reactive
 class Apple:
     def __init__(self):
-        self._computed_something = None
+        self._cached_something = None
 
     @reactive
     @property
     def apple(self) -> str:
-        if self._computed_something is None:
-            self._computed_something = 'I got you something!'
-        return self._computed_something
+        if self._cached_something is None:
+            self._cached_something = 'I got you something!'
+        return self._cached_something
 
     @apple.deleter
     def apple(self)  -> None:
-        self._computed_something = 'I got you nothing!'
+        self._cached_something = 'I got you nothing!'
 
 apple = Apple()
 print(apple.apple)
@@ -129,18 +129,18 @@ from reactives import reactive
 @reactive
 class Apple:
     def __init__(self):
-        self._computed_something = None
+        self._cached_something = None
 
     @reactive(on_trigger_delete=False)
     @property
     def apple(self) -> str:
-        if self._computed_something is None:
-            self._computed_something = 'I got you something!'
-        return self._computed_something
+        if self._cached_something is None:
+            self._cached_something = 'I got you something!'
+        return self._cached_something
 
     @apple.deleter
     def apple(self)  -> None:
-        self._computed_something = 'I got you nothing!'
+        self._cached_something = 'I got you nothing!'
 
 apple = Apple()
 print(apple.apple)
@@ -178,6 +178,28 @@ Values set through a property may themselves be reactive too. If they are, the p
 which means that the property becomes a reactor to the newly added value. As soon as the value is triggered,
 so is the property. Therefore, if you want to react to any change to any of the values a property might have, all you
 need to do is add your reactor to the property.
+
+*Getters* that perform conditional logic, such as for cached properties, can take over reactive scope dependency
+collection for more fine-grained reactivity control:
+```python
+from reactives import reactive, scope
+
+@reactive
+class Apple:
+    def __init__(self):
+        self._cached_something = None
+
+    @reactive(auto_collect_scope=False)
+    @property
+    def apple(self) -> str:
+        if self._cached_something is None:
+            with scope.collect(self.react['apple']):
+                self._cached_something = build_something()
+        return self._cached_something
+
+def build_something():
+    pass
+```
 
 ### Lists
 `ReactiveList` is a reactive version of Python's built-in `list`. You can use it in exactly the same way as `list`:
