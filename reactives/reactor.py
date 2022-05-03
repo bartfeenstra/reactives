@@ -137,12 +137,17 @@ class ReactorController:
             return
 
         with scope.suspend():
-            # This is identical to self._reactors.remove(reactor), but we resolve weakrefs first.
-            # To prevent the list from reindexing the values we still have to remove, compare reactors in reverse.
-            for i, self_reactor in reversed(list(enumerate(map(self._unweakref, self._reactors)))):
-                for reactor in reactors:
-                    if reactor == self_reactor:
-                        del self._reactors[i]
+            for reactor in reactors:
+                self._shutdown_reactor(reactor)
+
+    def _shutdown_reactor(self, reactor: ResolvableReactor) -> None:
+        # This is identical to self._reactors.remove(reactor), but we resolve weakrefs first.
+        # To prevent the list from reindexing the values we still have to remove, compare reactors in reverse.
+        for i, self_reactor in reversed(list(enumerate(map(self._unweakref, self._reactors)))):
+            if reactor == self_reactor:
+                del self._reactors[i]
+                # Only delete the first occurrence, just like list.remove().
+                return
 
     def react_weakref(self, *reactors: ResolvableReactor) -> None:
         """

@@ -3,7 +3,7 @@ import pickle
 from typing import Optional
 from unittest import TestCase
 
-from reactives import reactive
+from reactives import reactive, scope
 from reactives import UnsupportedReactive
 from reactives.factory.property import _PropertyReactorController
 from reactives.factory.type import ReactiveInstance
@@ -61,6 +61,7 @@ class ReactivePropertyTest(TestCase):
         @reactive
         class Subject(ReactiveInstance):
             def __init__(self):
+                super().__init__()
                 self._subject_called = False
 
             @reactive  # type: ignore
@@ -70,29 +71,58 @@ class ReactivePropertyTest(TestCase):
                     self._subject_called = True
                     return dependency()
 
-            @reactive  # type: ignore
-            @property
-            def subject2(self):
-                if not self._subject_called:
-                    self._subject_called = True
-                    return dependency()
-
         subject = Subject()
 
-        with assert_reactor_called(subject):
-            with assert_in_scope(subject.react['subject']):
-                # Call the reactive for the first time. This should result in dependency() being autowired.
-                subject.subject
+        with assert_in_scope(subject.react['subject']):
+            # Call the reactive for the first time. This should result in dependency() being autowired.
+            subject.subject
 
+        with assert_reactor_called(subject):
             # dependency() being autowired should cause the reactor to be called.
             dependency.react.trigger()
 
-            # Call the reactive again. This should result in dependency() being ignored and not to be autowired again.
-            with assert_in_scope(subject.react['subject']):
-                subject.subject
+        # Call the reactive again. This should result in dependency() being ignored and not to be autowired again.
+        with assert_in_scope(subject.react['subject']):
+            subject.subject
 
         # dependency() no longer being autowired should not cause the reactor to be called.
         with assert_not_reactor_called(subject):
+            dependency.react.trigger()
+
+    def test_fget_without_auto_collect_scope(self) -> None:
+        @reactive
+        def dependency():
+            return 'Dependency'
+
+        @reactive
+        class Subject(ReactiveInstance):
+            def __init__(self):
+                super().__init__()
+                self._dependency = None
+
+            @reactive(auto_collect_scope=False)  # type: ignore
+            @property
+            def subject(self):
+                if not self._dependency:
+                    with scope.collect(self.react['subject']):
+                        self._dependency = dependency()
+                return self._dependency
+
+        subject = Subject()
+
+        with assert_in_scope(subject.react['subject']):
+            # Call the reactive for the first time. This should result in dependency() being autowired.
+            subject.subject
+
+        with assert_reactor_called(subject):
+            # dependency() being autowired should cause the reactor to be called.
+            dependency.react.trigger()
+
+        # Call the reactive again. This should result in the cached value being returned without being recomputed.
+        subject.subject
+
+        # Ensure that dependency() remains autowired even if the property's value is not recomputed.
+        with assert_reactor_called(subject):
             dependency.react.trigger()
 
     def test_fset(self) -> None:
@@ -107,6 +137,7 @@ class ReactivePropertyTest(TestCase):
         @reactive
         class Subject(ReactiveInstance):
             def __init__(self):
+                super().__init__()
                 self._subject = 123
 
             @reactive  # type: ignore
@@ -125,7 +156,7 @@ class ReactivePropertyTest(TestCase):
         # Setting dependency_one should cause the reactor to be called.
         with assert_reactor_called(subject.react['subject']):
             subject.subject = dependency_one
-            self.assertEqual(dependency_one, subject._subject)
+        self.assertEqual(dependency_one, subject.subject)
 
         # dependency_one being autowired should cause the reactor to be called.
         with assert_reactor_called(subject.react['subject']):
@@ -134,7 +165,7 @@ class ReactivePropertyTest(TestCase):
         # Setting dependency_two should cause the reactor to be called.
         with assert_reactor_called(subject.react['subject']):
             subject.subject = dependency_two
-            self.assertEqual(dependency_two, subject._subject)
+        self.assertEqual(dependency_two, subject.subject)
 
         # dependency_one no longer being autowired should not cause the reactor to be called.
         with assert_not_reactor_called(subject.react['subject']):
