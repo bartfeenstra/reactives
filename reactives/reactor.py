@@ -182,3 +182,55 @@ def resolve_reactor_controller(reactor_controller: ResolvableReactorController) 
     if isinstance(reactor_controller, Reactive):
         return reactor_controller.react
     return reactor_controller
+
+
+ExpectedCallCount = Union[int, Tuple[int, int], Tuple[int, None], Tuple[None, int]]
+
+
+class AssertCallCountReactor:
+    def __init__(self, expected_call_count: ExpectedCallCount):
+        self._exact_expected_call_count: Optional[int]
+        self._minimum_expected_call_count: Optional[int]
+        self._maximum_expected_call_count: Optional[int]
+        if isinstance(expected_call_count, int):
+            self._exact_expected_call_count = expected_call_count
+            self._minimum_expected_call_count = expected_call_count
+            self._maximum_expected_call_count = expected_call_count
+        else:
+            self._exact_expected_call_count = None
+            self._minimum_expected_call_count, self._maximum_expected_call_count = expected_call_count
+        self._actual_call_count = 0
+
+    def __call__(self) -> None:
+        self._actual_call_count += 1
+        self._assert_maximum_call_count()
+
+    def _assert(self, expectation_message: str) -> None:
+        raise AssertionError(f'Failed asserting that a reactor ({self}) was {expectation_message}. Instead, it was actually called {self._actual_call_count} time(s).')
+
+    def _assert_exact_call_count(self) -> None:
+        if self._exact_expected_call_count is None:
+            return
+        if self._exact_expected_call_count == 0:
+            if self._actual_call_count != 0:
+                self._assert('never called')
+        elif self._exact_expected_call_count == 1:
+            if self._actual_call_count != 1:
+                self._assert('called exactly once')
+        else:
+            if self._actual_call_count != self._exact_expected_call_count:
+                self._assert(f'called exactly {self._exact_expected_call_count} times')
+
+    def _assert_minimum_call_count(self) -> None:
+        if self._minimum_expected_call_count is not None and self._actual_call_count < self._minimum_expected_call_count:
+            self._assert(f'called at least {self._minimum_expected_call_count} time(s)')
+
+    def _assert_maximum_call_count(self) -> None:
+        if self._maximum_expected_call_count is not None and self._actual_call_count > self._maximum_expected_call_count:
+            self._assert_exact_call_count()
+            self._assert(f'called at most {self._maximum_expected_call_count} time(s)')
+
+    def assert_call_count(self) -> None:
+        self._assert_exact_call_count()
+        self._assert_minimum_call_count()
+        self._assert_maximum_call_count()

@@ -1,13 +1,17 @@
+from __future__ import annotations
+
 from contextlib import contextmanager
 from typing import Union, Iterator, Optional, overload, Any, ContextManager
 
 from reactives import scope
 from reactives.factory import Reactive
-from reactives.reactor import Reactor, ReactorController, ResolvableReactorController, resolve_reactor_controller
+from reactives.reactor import Reactor, ReactorController, ResolvableReactorController, resolve_reactor_controller, \
+    AssertCallCountReactor, ExpectedCallCount
 
 
 class _DummyReactive(Reactive):
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.react = ReactorController()
 
 
@@ -31,36 +35,22 @@ def _assert_reactor(reactor: Reactor, sut: Optional[ResolvableReactorController]
         yield reactor
 
 
-class _AssertCalledReactor:
-    def __init__(self):
-        self.called = False
-
-    def __call__(self) -> None:
-        assert not self.called, 'Failed asserting that a reactor (%s) was called only once.' % self
-        self.called = True
-
-
 @overload
-def assert_reactor_called() -> ContextManager[Reactor]:
+def assert_reactor_called(expected_call_count: ExpectedCallCount = 1) -> ContextManager[Reactor]:
     pass
 
 
 @overload
-def assert_reactor_called(sut: Union[Reactive, ReactorController]) -> ContextManager[None]:
+def assert_reactor_called(sut: Union[Reactive, ReactorController], expected_call_count: ExpectedCallCount = 1) -> ContextManager[None]:
     pass
 
 
 # Ignore the decorator because Mypy falsely flags it as a type violation (https://github.com/python/mypy/issues/11373).
 @contextmanager  # type: ignore
-def assert_reactor_called(sut: Any = None) -> Iterator[Optional[Reactor]]:
-    reactor = _AssertCalledReactor()
+def assert_reactor_called(sut: Any = None, expected_call_count: ExpectedCallCount = 1) -> Iterator[Optional[Reactor]]:
+    reactor = AssertCallCountReactor(expected_call_count)
     yield from _assert_reactor(reactor, sut)
-    assert reactor.called, 'Failed asserting that a reactor (%s) was called, but it was actually never called at all.' % reactor
-
-
-class AssertNotCalledReactor:
-    def __call__(self):
-        raise AssertionError('Failed asserting that a reactor (%s) was not called.' % self)
+    reactor.assert_call_count()
 
 
 @overload
@@ -75,7 +65,7 @@ def assert_not_reactor_called(sut: ResolvableReactorController) -> ContextManage
 
 @contextmanager  # type: ignore
 def assert_not_reactor_called(sut: Optional[ResolvableReactorController] = None) -> Iterator[Optional[Reactor]]:
-    yield from _assert_reactor(AssertNotCalledReactor(), sut)
+    yield from _assert_reactor(AssertCallCountReactor(0), sut)
 
 
 @contextmanager
