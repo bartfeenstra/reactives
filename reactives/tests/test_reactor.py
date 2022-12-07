@@ -2,13 +2,16 @@ import copy
 import gc
 from unittest import TestCase
 
+from parameterized import parameterized
+
 from reactives import Reactive
-from reactives.reactor import ReactorController, resolve_reactor, resolve_reactor_controller
-from reactives.tests import assert_reactor_called, assert_not_reactor_called, AssertNotCalledReactor
+from reactives.reactor import ReactorController, resolve_reactor, resolve_reactor_controller, ExpectedCallCount
+from reactives.tests import assert_reactor_called, assert_not_reactor_called, AssertCallCountReactor
 
 
 class _Reactive(Reactive):
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.react = ReactorController()
 
 
@@ -96,7 +99,7 @@ class ReactorControllerTest(TestCase):
 
     def test_react_weakref(self) -> None:
         sut = ReactorController()
-        reactor = AssertNotCalledReactor()
+        reactor = AssertCallCountReactor(0)
         sut.react_weakref(reactor)
         del reactor
         gc.collect()
@@ -150,3 +153,35 @@ class ResolveReactorControllerTest(TestCase):
                 self.react = reactor_controller
         resolvable = _Reactive()
         self.assertEqual(reactor_controller, resolve_reactor_controller(resolvable))
+
+
+class AssertCallCountReactorTest(TestCase):
+    @parameterized.expand([
+        (0, 0),
+        (1, 1),
+        (2, 2),
+        ((1, 3), 1),
+        ((1, 3), 2),
+        ((1, 3), 3),
+    ])
+    def test_assert_call_count_should_pass(self, expected_call_count: ExpectedCallCount, actual_call_count: int) -> None:
+        self._assert_call_count(expected_call_count, actual_call_count)
+
+    @parameterized.expand([
+        (0, 1),
+        (1, 0),
+        (1, 2),
+        (2, 1),
+        (2, 3),
+        ((1, 3), 0),
+        ((1, 3), 4),
+    ])
+    def test_assert_call_count_should_raise_error(self, expected_call_count: ExpectedCallCount, actual_call_count: int) -> None:
+        with self.assertRaises(AssertionError):
+            self._assert_call_count(expected_call_count, actual_call_count)
+
+    def _assert_call_count(self, expected_call_count: ExpectedCallCount, actual_call_count: int) -> None:
+        sut = AssertCallCountReactor(expected_call_count)
+        for _ in range(0, actual_call_count):
+            sut()
+        sut.assert_call_count()
