@@ -11,7 +11,7 @@ done
 
 # Test the Python code style.
 flake8 --config ./flake8.ini ./reactives
-mypy ./reactives
+mypy
 
 # Run Python tests with coverage.
 coverage erase

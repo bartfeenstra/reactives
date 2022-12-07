@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import copy
 import inspect
 import weakref
@@ -6,17 +7,17 @@ from collections import deque
 from contextlib import contextmanager, suppress
 from typing import Sequence, Tuple, Optional, Dict, Set, Any, Iterator, cast, Callable, Union, List
 
-try:
-    from typing import Self  # type: ignore
-except ImportError:
-    from typing_extensions import Self  # type: ignore
-
 from reactives.factory import Reactive
 
 try:
     from graphlib import TopologicalSorter
 except ImportError:
     from graphlib_backport import TopologicalSorter  # type: ignore
+
+try:
+    from typing import Self  # type: ignore
+except ImportError:
+    from typing_extensions import Self
 
 
 class ReactorController:
