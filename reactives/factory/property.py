@@ -1,15 +1,15 @@
 import functools
 from typing import Any, Dict, Callable, Optional, TypeVar
 
-try:
-    from typing import Self  # type: ignore
-except ImportError:
-    from typing_extensions import Self  # type: ignore
-
 from reactives import scope
 from reactives.factory import reactive_factory, UnsupportedReactive, Reactive, reactive
 from reactives.factory.type import InstanceAttribute, ReactiveInstance
 from reactives.reactor import ReactorController
+
+try:
+    from typing import Self  # type: ignore
+except ImportError:
+    from typing_extensions import Self
 
 T = TypeVar('T')
 

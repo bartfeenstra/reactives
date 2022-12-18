@@ -5,13 +5,13 @@ from contextlib import suppress
 from typing import Dict, Any, Type
 from warnings import warn
 
+from reactives.factory import reactive_factory, Reactive
+from reactives.reactor import ReactorController
+
 try:
     from typing import Self  # type: ignore
 except ImportError:
-    from typing_extensions import Self  # type: ignore
-
-from reactives.factory import reactive_factory, Reactive
-from reactives.reactor import ReactorController
+    from typing_extensions import Self
 
 
 class InstanceAttribute:

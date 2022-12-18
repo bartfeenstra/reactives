@@ -25,15 +25,16 @@ SETUP = {
     'classifiers': [
         'Intended Audience :: Developers',
         'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
-        'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
         'Topic :: Software Development :: Libraries :: Application Frameworks',
     ],
-    'python_requires': '~= 3.7',
+    'python_requires': '~= 3.8',
     'install_requires': [
-        'graphlib-backport ~= 1.0; python_version < "3.9"',
+        'graphlib-backport ~= 1.0.3; python_version < "3.9"',
+        'typing_extensions ~= 4.4.0; python_version < "3.11"',
     ],
     'extras_require': {
         'development': [
@@ -41,13 +42,13 @@ SETUP = {
             'codecov ~= 2.1.12',
             'coverage ~= 6.3.2',
             'dill ~= 0.3.4',
-            'flake8 ~= 4.0.1',
-            'mypy ~= 0.950',
+            'flake8 ~= 6.0.0',
+            # @todo Set this to ~= 0.992 (or whichever version comes after 0.991) once that version has been released.
+            'mypy @ git+https://github.com/python/mypy.git@96ac8b3e71c743b02ea4e3c84da0248659e40f82',
             'nose2 ~= 0.11.0',
             'parameterized ~= 0.8.1',
             'setuptools ~= 62.1.0',
             'twine ~= 4.0',
-            'typing_extensions ~= 4.2.0; python_version < "3.10"',
             'wheel ~= 0.37.1',
         ],
     },

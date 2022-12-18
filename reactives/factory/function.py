@@ -3,16 +3,15 @@ from __future__ import annotations
 import functools
 from typing import Callable, Optional, Dict, Any, cast
 
-try:
-    from typing import Self  # type: ignore
-except ImportError:
-    from typing_extensions import Self  # type: ignore
-
-
 from reactives import scope
 from reactives.factory import reactive_factory, Reactive
 from reactives.factory.type import InstanceAttribute, ReactiveInstance
 from reactives.reactor import ReactorController
+
+try:
+    from typing import Self  # type: ignore
+except ImportError:
+    from typing_extensions import Self
 
 
 class _FunctionReactorController(ReactorController):

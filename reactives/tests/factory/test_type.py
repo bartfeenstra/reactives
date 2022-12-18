@@ -8,6 +8,11 @@ from reactives.factory import reactive, Reactive
 from reactives.factory.type import _InstanceReactorController, ReactiveInstance
 from reactives.tests import assert_reactor_called, assert_not_reactor_called
 
+try:
+    from typing import Self  # type: ignore
+except ImportError:
+    from typing_extensions import Self
+
 
 class InstanceReactorControllerTest(TestCase):
     def test___copy__(self) -> None:
@@ -72,7 +77,7 @@ class ReactiveTypeTest(TestCase):
 
     @reactive
     class SubjectWithCopy(Subject):
-        def __copy__(self) -> ReactiveTypeTest.SubjectWithCopy:
+        def __copy__(self) -> Self:
             return self.__class__()
 
     def test_pickle(self) -> None:
