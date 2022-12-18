@@ -30,6 +30,7 @@ SETUP = {
         'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: 3.11',
         'Topic :: Software Development :: Libraries :: Application Frameworks',
+        'Typing :: Typed',
     ],
     'python_requires': '~= 3.8',
     'install_requires': [
@@ -44,7 +45,7 @@ SETUP = {
             'dill ~= 0.3.4',
             'flake8 ~= 6.0.0',
             # @todo Set this to ~= 0.992 (or whichever version comes after 0.991) once that version has been released.
-            'mypy @ git+https://github.com/python/mypy.git@96ac8b3e71c743b02ea4e3c84da0248659e40f82',
+            'mypy @ git+https://github.com/python/mypy.git@ca668055feceba63f2e441ec91ce76dac77eaf5d',
             'nose2 ~= 0.11.0',
             'parameterized ~= 0.8.1',
             'setuptools ~= 62.1.0',

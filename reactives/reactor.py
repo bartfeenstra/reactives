@@ -3,186 +3,237 @@ from __future__ import annotations
 import copy
 import inspect
 import weakref
-from collections import deque
-from contextlib import contextmanager, suppress
-from typing import Sequence, Tuple, Optional, Dict, Set, Any, Iterator, cast, Callable, Union, List
+from _weakref import ReferenceType
+from collections import defaultdict
+from contextlib import suppress
+from enum import IntEnum, auto
+from typing import Tuple, Dict, Any, Iterator, Callable, Union, TypeVar, overload, MutableSequence, MutableMapping, cast
 
-from reactives.factory import Reactive
+from reactives import Reactive
 
 try:
     from graphlib import TopologicalSorter
-except ImportError:
-    from graphlib_backport import TopologicalSorter  # type: ignore
+except ImportError:  # pragma: no cover
+    from graphlib_backport import TopologicalSorter  # type: ignore[no-redef]  # pragma: no cover
 
 try:
-    from typing import Self  # type: ignore
-except ImportError:
-    from typing_extensions import Self
+    from typing_extensions import Self, TypeAlias
+except ImportError:  # pragma: no cover
+    from typing import Self, TypeAlias  # type: ignore  # pragma: no cover
+
+
+class TriggerOrigin(IntEnum):
+    # A trigger originating from outside a reactive or reactor controller.
+    EXTERNAL = auto()
+    # A trigger originating from inside a reactor controller. This will skip the reactor controller's on-trigger event
+    # handler.
+    INTERNAL = auto()
+
+
+class _ReactorChain:
+    def __init__(self) -> None:
+        self._target_reactor_graph: MutableMapping[ReactorGraphNode, MutableSequence[ReactorGraphNode]] = defaultdict(list)
+        self._target_nodes: Iterator[ReactorGraphNode] | None = None
+
+    def update(
+            self,
+            source_reactor_controller: ReactorController,
+            origin: TriggerOrigin = TriggerOrigin.EXTERNAL,
+    ) -> None:
+        self._target_nodes = None
+        for source_reactor, target_reactor in self._resolve_edges(None, source_reactor_controller, origin):
+            if source_reactor is not None:
+                self._target_reactor_graph[target_reactor].append(source_reactor)
+
+    def _resolve_edges(
+            self,
+            source_node: ReactorGraphNode | None,
+            target_node: ReactorGraphNode,
+            origin: TriggerOrigin = TriggerOrigin.EXTERNAL,
+    ) -> Iterator[Tuple[ReactorGraphNode | None, ReactorGraphNode]]:
+        yield source_node, target_node
+        if isinstance(target_node, ReactorController):
+            yield from self._resolve_reactor_controller_edges(target_node, origin)
+
+    def _resolve_reactor_controller_edges(
+            self,
+            target_node: ReactorController,
+            origin: TriggerOrigin = TriggerOrigin.EXTERNAL,
+    ) -> Iterator[Tuple[ReactorGraphNode | None, ReactorGraphNode]]:
+        target_reactor_controller_reactors_source_node: ReactorGraphNode
+        if origin is TriggerOrigin.INTERNAL:
+            target_reactor_controller_reactors_source_node = target_node
+        else:
+            yield target_node, target_node._on_trigger
+            target_reactor_controller_reactors_source_node = target_node._on_trigger
+        for target_reactor_controller_reactor in target_node._reactors:
+            yield from self._resolve_edges(
+                target_reactor_controller_reactors_source_node,
+                target_reactor_controller_reactor,
+            )
+
+    def __iter__(self) -> Self:
+        return self
+
+    def __next__(self) -> Reactor:
+        # Rebuild the reactors if they were updated.
+        if self._target_nodes is None:
+            self._target_nodes = cast(Iterator[ReactorGraphNode], TopologicalSorter(self._target_reactor_graph).static_order())
+
+        target_reactor = next(self._target_nodes)
+
+        # Remove the reactor from the graph.
+        with suppress(KeyError):
+            del self._target_reactor_graph[target_reactor]
+        for source_reactors in self._target_reactor_graph.values():
+            with suppress(ValueError):
+                source_reactors.remove(target_reactor)
+
+        # Skip reactor controllers, which are kept for graph resolution, but are not reactors themselves.
+        if isinstance(target_reactor, ReactorController):
+            return self.__next__()
+        return target_reactor
+
+    def trigger(
+            self,
+            source_reactor_controller: ReactorController,
+            origin: TriggerOrigin = TriggerOrigin.EXTERNAL,
+    ) -> None:
+        self.update(source_reactor_controller, origin)
+        for target_reactor in self:
+            target_reactor()
+
+
+class _ReactorChainTrigger:
+    _current: _ReactorChain | None = None
+
+    @classmethod
+    def trigger(
+            cls,
+            source_reactor_controller: ReactorController,
+            origin: TriggerOrigin = TriggerOrigin.EXTERNAL,
+    ) -> None:
+        if cls._current:
+            cls._current.update(source_reactor_controller, origin)
+        else:
+            cls._current = _ReactorChain()
+            try:
+                cls._current.trigger(source_reactor_controller, origin)
+            finally:
+                cls._current = None
 
 
 class ReactorController:
-    _trigger_suspended: bool = False
-    _chain_is_reacting: bool = False
-    _chain_reactor_graph: Dict[Reactor, Set[Reactor]] = {}
-    _chain_reactors: deque = deque()
-    _chain_current_reactor: Optional[Reactor] = None
+    def __init__(self) -> None:
+        self.__reactors: MutableSequence[ReactorGraphNode | ReferenceType[ReactorGraphNode]] = []
+        self._dependencies: MutableSequence[ReactorController] = []
 
-    def __init__(self):
-        self._reactors = []
-        self._dependencies: List[Reactive] = []
-
-    def __call__(self, *args):
-        self.react(*args)
+    def __call__(self, *reactors: ResolvableReactor) -> None:
+        self.react(*reactors)
 
     def __copy__(self) -> Self:
         copied = self.__class__.__new__(self.__class__)
-        copied._reactors = copy.copy(self._reactors)
+        copied.__reactors = copy.copy(self.__reactors)
         return copied
 
     def __getstate__(self) -> Dict[str, Any]:
         return {
-            '_reactors': self._reactors,
+            '__reactors': self.__reactors,
+            '_dependencies': self._dependencies,
         }
 
     def __setstate__(self, state: Dict[str, Any]) -> None:
-        self._reactors = state['_reactors']
+        self.__reactors = state['__reactors']
+        self._dependencies = state['_dependencies']
 
     @property
-    def reactors(self) -> Sequence[Reactor]:
-        return [*self._reactors]
+    def _reactors(self) -> Iterator[ReactorGraphNode]:
+        yield from filter(None, map(
+            self._unweakref,  # type: ignore[arg-type]
+            self.__reactors,
+        ))
 
     def trigger(self) -> None:
-        if ReactorController._trigger_suspended:
-            return
+        _ReactorChainTrigger.trigger(self)
 
-        if self.trigger == ReactorController._chain_current_reactor:
-            return
+    def _trigger(self) -> None:
+        _ReactorChainTrigger.trigger(self, TriggerOrigin.INTERNAL)
 
-        self._update_reactor_graph()
-        self._trigger_reactor_chain()
+    def _on_trigger(self) -> None:
+        pass
 
-    def _update_reactor_graph(self) -> None:
-        if len(self._reactors) == 0:
-            return
-
-        for reactor in self._reactors:
-            for source_reactor, target_reactor in self._expand_reactor(None, reactor):
-                if target_reactor not in ReactorController._chain_reactor_graph:
-                    ReactorController._chain_reactor_graph[target_reactor] = set()
-                if source_reactor is not None:
-                    ReactorController._chain_reactor_graph[target_reactor].add(source_reactor)
-
-        ReactorController._chain_reactors = deque(TopologicalSorter(ReactorController._chain_reactor_graph).static_order())
-
-    def _expand_reactor(self, caller: Optional[Reactor], reactor: ResolvableReactor) -> Iterator[Tuple[Optional[Reactor], Reactor]]:
-        reactor = self._unweakref(reactor)
-
-        if isinstance(reactor, (ReactorController, Reactive)):
-            reactor_controller = resolve_reactor_controller(reactor)
-            yield caller, reactor_controller.trigger
-            for reactor_reactor in reactor_controller.reactors:
-                yield from self._expand_reactor(reactor_controller.trigger, reactor_reactor)
-        else:
-            yield caller, reactor
-
-    def _trigger_reactor_chain(self) -> None:
-        if ReactorController._chain_is_reacting:
-            return
-        ReactorController._chain_is_reacting = True
-        try:
-            while True:
-                try:
-                    ReactorController._chain_current_reactor = cast(Reactor, ReactorController._chain_reactors.popleft())
-                except IndexError:
-                    return
-
-                # Remove indegree vertices, if they exist. This keeps the graph as small as possible, allowing for the
-                # most efficient re-tsorting if it must be extended because of branched reactors.
-                with suppress(KeyError):
-                    del ReactorController._chain_reactor_graph[ReactorController._chain_current_reactor]
-
-                ReactorController._chain_current_reactor()
-        finally:
-            ReactorController._chain_is_reacting = False
-            ReactorController._chain_current_reactor = None
-
-    def _weakref(self, target, *args, **kwargs) -> weakref.ref:
-        if inspect.ismethod(target):
-            return weakref.WeakMethod(target, *args, **kwargs)
+    def _weakref(self, reactor: ReactorGraphNodeT, callback: Callable[[ReferenceType[ReactorGraphNodeT]], Any]) -> ReferenceType[ReactorGraphNodeT]:
+        if inspect.ismethod(reactor):
+            return weakref.WeakMethod(
+                reactor,  # type: ignore[arg-type]
+                callback,  # type: ignore[arg-type]
+            )
         # weakref.proxy is not hashable, so we use weakref.ref and dereference it ourselves.
-        return weakref.ref(target, *args, **kwargs)
+        return weakref.ref(reactor, callback)
 
-    def _unweakref(self, reference: Any) -> Any:
-        # weakref.proxy is not hashable, so we use weakref.ref and dereference it ourselves.
+    def _unweakref(self, reference: ReactorGraphNodeT | ReferenceType[ReactorGraphNodeT]) -> ReactorGraphNodeT | None:
         if isinstance(reference, weakref.ref):
             return reference()
         return reference
 
-    @classmethod
-    @contextmanager
-    def suspend(cls) -> Iterator[None]:
-        original_suspended = ReactorController._trigger_suspended
-        ReactorController._trigger_suspended = True
-        yield
-        ReactorController._trigger_suspended = original_suspended
+    def _resolve_reactor(self, reactor: ResolvableReactor) -> ReactorGraphNode:
+        if isinstance(reactor, Reactive):
+            return reactor.react
+        return reactor
 
     def react(self, *reactors: ResolvableReactor) -> None:
         for reactor in reactors:
-            self._reactors.append(reactor)
+            self.__reactors.append(self._resolve_reactor(reactor))
 
     def shutdown(self, *reactors: ResolvableReactor) -> None:
-        from reactives import scope
-
         if not reactors:
-            self._reactors.clear()
+            self.__reactors.clear()
             return
 
-        with scope.suspend():
-            for reactor in reactors:
-                self._shutdown_reactor(reactor)
+        for reactor in reactors:
+            self._shutdown_reactor(reactor)
 
     def _shutdown_reactor(self, reactor: ResolvableReactor) -> None:
-        # This is identical to self._reactors.remove(reactor), but we resolve weakrefs first.
+        reactor = self._resolve_reactor(reactor)
         # To prevent the list from reindexing the values we still have to remove, compare reactors in reverse.
-        for i, self_reactor in reversed(list(enumerate(map(self._unweakref, self._reactors)))):
+        for i, self_reactor in reversed(list(enumerate(map(
+            self._unweakref,  # type: ignore[arg-type]
+            self.__reactors,
+        )))):
             if reactor == self_reactor:
-                del self._reactors[i]
-                # Only delete the first occurrence, just like list.remove().
-                return
+                del self.__reactors[i]
 
     def react_weakref(self, *reactors: ResolvableReactor) -> None:
-        """
-        Add a reactor using a weakref.
-
-        This is a small helper, and it doesn't do much, but it serves as a reminder for people that it's important to
-        consider using weakrefs for the performance of their application: if a reactor is added without a weakref, it
-        MUST be shut down explicitly or a reference to it will exist forever, consuming memory and potentially slowing
-        down reactivity.
-        """
         for reactor in reactors:
-            self.react(self._weakref(reactor, self._reactors.remove))
+            self.__reactors.append(self._weakref(self._resolve_reactor(reactor), self._shutdown_reactor))
 
 
-Reactor = Callable[[], Any]
+Reactor: TypeAlias = Callable[[], Any]
+ReactorGraphNode: TypeAlias = Union[Reactor, ReactorController]
+ReactorGraphNodeT = TypeVar('ReactorGraphNodeT', bound=ReactorGraphNode)
+ReactorControllerT = TypeVar('ReactorControllerT', bound=ReactorController)
+ResolvableReactorController: TypeAlias = Union[ReactorController, Reactive]
+ResolvableReactorControllerT = TypeVar('ResolvableReactorControllerT', bound=ResolvableReactorController)
+ResolvableReactor: TypeAlias = Union[Reactor, ResolvableReactorController]
+ResolvableReactorT = TypeVar('ResolvableReactorT', bound=ResolvableReactor)
 
 
-ResolvableReactor = Union[Reactor, ReactorController, Reactive]
+@overload
+def resolve_reactor_controller(resolvable: Reactive) -> ReactorController:
+    pass
 
 
-def resolve_reactor(reactor: ResolvableReactor) -> Iterator[Reactor]:
-    if isinstance(reactor, (ReactorController, Reactive)):
-        yield from resolve_reactor_controller(reactor).reactors
-        return
-    yield reactor
+@overload
+def resolve_reactor_controller(resolvable: ReactorController) -> ReactorController:
+    pass
 
 
-ResolvableReactorController = Union[ReactorController, Reactive]
-
-
-def resolve_reactor_controller(reactor_controller: ResolvableReactorController) -> ReactorController:
-    if isinstance(reactor_controller, Reactive):
-        return reactor_controller.react
-    return reactor_controller
+def resolve_reactor_controller(resolvable: ResolvableReactorController) -> ReactorController:
+    if isinstance(resolvable, ReactorController):
+        return resolvable
+    if isinstance(resolvable, Reactive):
+        return resolvable.react
+    raise ValueError(f'Cannot resolve the reactor controller for {resolvable}.')  # pragma: no cover
 
 
 ExpectedCallCount = Union[int, Tuple[int, int], Tuple[int, None], Tuple[None, int]]
@@ -190,9 +241,9 @@ ExpectedCallCount = Union[int, Tuple[int, int], Tuple[int, None], Tuple[None, in
 
 class AssertCallCountReactor:
     def __init__(self, expected_call_count: ExpectedCallCount):
-        self._exact_expected_call_count: Optional[int]
-        self._minimum_expected_call_count: Optional[int]
-        self._maximum_expected_call_count: Optional[int]
+        self._exact_expected_call_count: int | None
+        self._minimum_expected_call_count: int | None
+        self._maximum_expected_call_count: int | None
         if isinstance(expected_call_count, int):
             self._exact_expected_call_count = expected_call_count
             self._minimum_expected_call_count = expected_call_count
