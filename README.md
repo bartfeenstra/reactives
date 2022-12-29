@@ -180,28 +180,6 @@ which means that the property becomes a reactor to the newly added value. As soo
 so is the property. Therefore, if you want to react to any change to any of the values a property might have, all you
 need to do is add your reactor to the property.
 
-*Getters* that perform conditional logic, such as for cached properties, can take over reactive scope dependency
-collection for more fine-grained reactivity control:
-```python
-from reactives import reactive, scope
-
-@reactive
-class Apple:
-    def __init__(self):
-        self._cached_something = None
-
-    @reactive(auto_collect_scope=False)
-    @property
-    def apple(self) -> str:
-        if self._cached_something is None:
-            with scope.collect(self.react['apple']):
-                self._cached_something = build_something()
-        return self._cached_something
-
-def build_something():
-    pass
-```
-
 ### Lists
 `ReactiveList` is a reactive version of Python's built-in `list`. You can use it in exactly the same way as `list`:
 ```python

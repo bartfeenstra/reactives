@@ -3,8 +3,8 @@ import pickle
 from typing import Optional
 from unittest import TestCase
 
-from reactives import reactive, scope
 from reactives import UnsupportedReactive
+from reactives import reactive
 from reactives.factory.property import _PropertyReactorController
 from reactives.factory.type import ReactiveInstance
 from reactives.tests import assert_not_reactor_called, assert_reactor_called, assert_in_scope
@@ -87,42 +87,6 @@ class ReactivePropertyTest(TestCase):
 
         # dependency() no longer being autowired should not cause the reactor to be called.
         with assert_not_reactor_called(subject):
-            dependency.react.trigger()
-
-    def test_fget_without_auto_collect_scope(self) -> None:
-        @reactive
-        def dependency():
-            return 'Dependency'
-
-        @reactive
-        class Subject(ReactiveInstance):
-            def __init__(self):
-                super().__init__()
-                self._dependency = None
-
-            @reactive(auto_collect_scope=False)  # type: ignore
-            @property
-            def subject(self):
-                if not self._dependency:
-                    with scope.collect(self.react['subject']):
-                        self._dependency = dependency()
-                return self._dependency
-
-        subject = Subject()
-
-        with assert_in_scope(subject.react['subject']):
-            # Call the reactive for the first time. This should result in dependency() being autowired.
-            subject.subject
-
-        with assert_reactor_called(subject):
-            # dependency() being autowired should cause the reactor to be called.
-            dependency.react.trigger()
-
-        # Call the reactive again. This should result in the cached value being returned without being recomputed.
-        subject.subject
-
-        # Ensure that dependency() remains autowired even if the property's value is not recomputed.
-        with assert_reactor_called(subject):
             dependency.react.trigger()
 
     def test_fset(self) -> None:
