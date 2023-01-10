@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import copy
 import pickle
-from unittest import TestCase
+
+import pytest
 
 from reactives import Reactive
 from reactives.instance import ReactiveInstance, _ReactiveInstanceReactorController, InstanceAttributeDefinition
@@ -40,7 +41,7 @@ class SubjectWithoutAttributes(ReactiveInstance):
     pass
 
 
-class ReactiveInstanceReactorControllerTest(TestCase):
+class TestReactiveInstanceReactorController:
     def test___copy__(self) -> None:
         sut = _ReactiveInstanceReactorController(Subject())
         with assert_reactor_called(sut):
@@ -51,34 +52,34 @@ class ReactiveInstanceReactorControllerTest(TestCase):
 
     def test_getattr_with_reactive_attribute(self) -> None:
         sut = _ReactiveInstanceReactorController(Subject())
-        self.assertIsInstance(sut.getattr_reactive('subject_method'), Reactive)
+        assert isinstance(sut.getattr_reactive('subject_method'), Reactive)
 
     def test_getattr_with_existent_non_reactive_attribute(self) -> None:
         sut = _ReactiveInstanceReactorController(SubjectWithNonReactiveAttribute())
-        with self.assertRaises(AttributeError):
+        with pytest.raises(AttributeError):
             sut.getattr_reactive('subject_method')
 
     def test_getattr_with_non_existent_attribute(self) -> None:
         sut = _ReactiveInstanceReactorController(SubjectWithoutAttributes())
-        with self.assertRaises(AttributeError):
+        with pytest.raises(AttributeError):
             sut.getattr_reactive('subject_method')
 
     def test___getitem___with_reactive_attribute(self) -> None:
         sut = _ReactiveInstanceReactorController(Subject())
-        self.assertIsInstance(sut['subject_method'], Reactive)
+        assert isinstance(sut['subject_method'], Reactive)
 
     def test___getitem___with_existent_non_reactive_attribute(self) -> None:
         sut = _ReactiveInstanceReactorController(SubjectWithoutAttributes())
-        with self.assertRaises(AttributeError):
+        with pytest.raises(AttributeError):
             sut['subject']
 
     def test___getitem___with_non_existent_attribute(self) -> None:
         sut = _ReactiveInstanceReactorController(SubjectWithoutAttributes())
-        with self.assertRaises(AttributeError):
+        with pytest.raises(AttributeError):
             sut['subject']
 
 
-class ReactiveInstanceTest(TestCase):
+class TestReactiveInstance:
     def test_pickle(self) -> None:
         subject = Subject()
         unpickled_subject = pickle.loads(pickle.dumps(subject))
@@ -127,7 +128,7 @@ class ReactiveInstanceTest(TestCase):
             subject.react['subject_method'].react.trigger()
 
 
-class InstanceAttributeDefinitionTest(TestCase):
+class TestInstanceAttributeDefinition:
     class InstanceAttributeDefinitionSubject(ReactiveInstance):
         @reactive_method
         def subject(self) -> None:
@@ -137,20 +138,20 @@ class InstanceAttributeDefinitionTest(TestCase):
         pass
 
     def test_iter_with_own_reactive_attribute(self) -> None:
-        self.assertEqual(1, len(list(InstanceAttributeDefinition.iter(self.InstanceAttributeDefinitionSubject, 'subject'))))
+        assert 1 == len(list(InstanceAttributeDefinition.iter(self.InstanceAttributeDefinitionSubject, 'subject')))
 
     def test_iter_with_inherited_reactive_attribute(self) -> None:
-        self.assertEqual(1, len(list(InstanceAttributeDefinition.iter(self.InheritedInstanceAttributeDefinitionSubject, 'subject'))))
+        assert 1 == len(list(InstanceAttributeDefinition.iter(self.InheritedInstanceAttributeDefinitionSubject, 'subject')))
 
     def test_iter_with_local_should_error(self) -> None:
         class Local(ReactiveInstance):
             pass
 
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             list(InstanceAttributeDefinition.iter(Local, 'local'))
 
     def test_register_with_local_should_error(self) -> None:
         def local() -> None:
             pass
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             InstanceAttributeDefinition(local)

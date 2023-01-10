@@ -1,12 +1,11 @@
 import copy
 import pickle
-from unittest import TestCase
 
 from reactives._callable import CallableReactorController
 from reactives.tests import assert_reactor_called, assert_not_reactor_called
 
 
-class CallableReactorControllerTest(TestCase):
+class TestCallableReactorController:
     def test___copy__(self) -> None:
         sut = CallableReactorController()
         with assert_reactor_called(sut):
@@ -39,4 +38,4 @@ class CallableReactorControllerTest(TestCase):
             called = True
         sut = CallableReactorController(on_trigger_call=on_trigger)
         sut.trigger()
-        self.assertTrue(called)
+        assert called is True

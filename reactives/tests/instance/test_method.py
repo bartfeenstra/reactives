@@ -1,5 +1,3 @@
-from unittest import TestCase
-
 from reactives.function import reactive_function
 from reactives.instance import ReactiveInstance
 from reactives.instance.method import reactive_method
@@ -23,16 +21,16 @@ class Subject(ReactiveInstance):
             dependency()
 
 
-class ReactiveMethodTest(TestCase):
+class TestReactiveMethod:
     def test_wrapped_metadata_for_class_method(self) -> None:
-        self.assertEqual('reactives.tests.instance.test_method', Subject.subject.__module__)
-        self.assertEqual('subject', Subject.subject.__name__)
-        self.assertEqual('Subject.subject', Subject.subject.__qualname__)
+        assert 'reactives.tests.instance.test_method' == Subject.subject.__module__
+        assert 'subject' == Subject.subject.__name__
+        assert 'Subject.subject' == Subject.subject.__qualname__
 
     def test_wrapped_metadata_for_instance_method(self) -> None:
-        self.assertEqual('reactives.tests.instance.test_method', Subject().subject.__module__)
-        self.assertEqual('subject', Subject().subject.__name__)
-        self.assertEqual('Subject.subject', Subject().subject.__qualname__)
+        assert 'reactives.tests.instance.test_method' == Subject().subject.__module__
+        assert 'subject' == Subject().subject.__name__
+        assert 'Subject.subject' == Subject().subject.__qualname__
 
     def test_call_as_class_method(self) -> None:
         subject = Subject()
