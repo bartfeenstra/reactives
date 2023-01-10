@@ -46,8 +46,9 @@ SETUP = {
             'flake8 ~= 6.0.0',
             # @todo Set this to ~= 0.992 (or whichever version comes after 0.991) once that version has been released.
             'mypy @ git+https://github.com/python/mypy.git@ca668055feceba63f2e441ec91ce76dac77eaf5d',
-            'nose2 ~= 0.11.0',
             'parameterized ~= 0.8.1',
+            'pytest ~= 7.2.0',
+            'pytest-cov ~= 4.0.0',
             'setuptools ~= 62.1.0',
             'twine ~= 4.0',
             'wheel ~= 0.37.1',

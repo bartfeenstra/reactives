@@ -1,5 +1,3 @@
-from unittest import TestCase
-
 from reactives.function import reactive_function
 from reactives.tests import assert_reactor_called, assert_not_reactor_called
 
@@ -14,11 +12,11 @@ def subject() -> None:
     pass
 
 
-class ReactiveFunctionTest(TestCase):
+class TestReactiveFunction:
     def test_wrapped_metadata(self) -> None:
-        self.assertEqual('reactives.tests.test_function', subject.__module__)
-        self.assertEqual('subject', subject.__name__)
-        self.assertEqual('subject', subject.__qualname__)
+        assert 'reactives.tests.test_function' == subject.__module__
+        assert 'subject' == subject.__name__
+        assert 'subject' == subject.__qualname__
 
     def test_call(self) -> None:
         called = False

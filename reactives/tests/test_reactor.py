@@ -1,7 +1,7 @@
 import copy
 from typing import Any, MutableSequence
-from unittest import TestCase
 
+import pytest
 from parameterized import parameterized
 
 from reactives import Reactive
@@ -38,7 +38,7 @@ class NeverExternalTriggerReactorController(ReactorController):
         raise AssertionError('This reactor controller must never be triggered externally.')
 
 
-class ReactorChainTest(TestCase):
+class TestReactorChain:
     def test_trigger_without_reactors(self) -> None:
         reactor_controller = ReactorController()
         sut = _ReactorChain()
@@ -58,8 +58,8 @@ class ReactorChainTest(TestCase):
         with assert_reactor_called(reactor_controller_1):
             with assert_reactor_called(reactor_controller_2):
                 sut.trigger(reactor_controller_1, origin=TriggerOrigin.EXTERNAL)
-        self.assertEqual([True], reactor_controller_1.tracker)
-        self.assertEqual([True], reactor_controller_2.tracker)
+        assert [True] == reactor_controller_1.tracker
+        assert [True] == reactor_controller_2.tracker
 
     def test_trigger_with_origin_internal(self) -> None:
         reactor_controller_1 = NeverExternalTriggerReactorController()
@@ -69,8 +69,8 @@ class ReactorChainTest(TestCase):
         with assert_reactor_called(reactor_controller_1):
             with assert_reactor_called(reactor_controller_2):
                 sut.trigger(reactor_controller_1, origin=TriggerOrigin.INTERNAL)
-        self.assertEqual([], reactor_controller_1.tracker)
-        self.assertEqual([True], reactor_controller_2.tracker)
+        assert [] == reactor_controller_1.tracker
+        assert [True] == reactor_controller_2.tracker
 
     def test_trigger_with_diamond_reactors(self) -> None:
         order_tracker = []
@@ -106,7 +106,7 @@ class ReactorChainTest(TestCase):
         # r_ba   r_ca
         #    \   /
         #     r_d
-        self.assertEqual(['a', 'b', 'c', 'ba', 'ca', 'd'], order_tracker)
+        assert ['a', 'b', 'c', 'ba', 'ca', 'd'] == order_tracker
 
     def test_trigger_with_diamond_triggers(self) -> None:
         order_tracker = []
@@ -163,10 +163,10 @@ class ReactorChainTest(TestCase):
         #
         # 'd' appears in the resolved chain twice. Due to the non-declarative nature of triggers, the 'ba' trigger of
         # 'd' is completed by the time 'ca' is triggered and can trigger 'd' again.
-        self.assertEqual(['a', 'b', 'ba', 'd', 'c', 'ca', 'd'], order_tracker)
+        assert ['a', 'b', 'ba', 'd', 'c', 'ca', 'd'] == order_tracker
 
 
-class ReactorControllerTest(TestCase):
+class TestReactorController:
     def test___copy__(self) -> None:
         sut = ReactorController()
         with assert_reactor_called(sut):
@@ -178,13 +178,13 @@ class ReactorControllerTest(TestCase):
     def test_trigger_with_on_trigger(self) -> None:
         sut = OnTriggerReactorController()
         sut.trigger()
-        self.assertEqual([True], sut.tracker)
+        assert [True] == sut.tracker
 
     def test_trigger_with_on_trigger_with_reactor(self) -> None:
         sut = OnTriggerReactorController()
         sut.react(lambda: sut.tracker.append(False))
         sut.trigger()
-        self.assertEqual([True, False], sut.tracker)
+        assert [True, False] == sut.tracker
 
     def test_trigger_without_reactors(self) -> None:
         sut = ReactorController()
@@ -236,11 +236,11 @@ class ReactorControllerTest(TestCase):
         sut.trigger()
 
 
-class ResolveReactorControllerTest(TestCase):
+class TestResolveReactorController:
     def test_with_reactor_controller(self) -> None:
         reactor_controller = ReactorController()
         resolvable = reactor_controller
-        self.assertEqual(reactor_controller, resolve_reactor_controller(resolvable))
+        assert reactor_controller == resolve_reactor_controller(resolvable)
 
     def test_with_reactive(self) -> None:
         reactor_controller = ReactorController()
@@ -250,10 +250,10 @@ class ResolveReactorControllerTest(TestCase):
                 super().__init__()
                 self.react = reactor_controller
         resolvable = _Reactive()
-        self.assertEqual(reactor_controller, resolve_reactor_controller(resolvable))
+        assert reactor_controller == resolve_reactor_controller(resolvable)
 
 
-class AssertCallCountReactorTest(TestCase):
+class TestAssertCallCountReactor:
     @parameterized.expand([
         (0, 0),
         (1, 1),
@@ -275,7 +275,7 @@ class AssertCallCountReactorTest(TestCase):
         ((1, 3), 4),
     ])
     def test_assert_call_count_should_raise_error(self, expected_call_count: ExpectedCallCount, actual_call_count: int) -> None:
-        with self.assertRaises(AssertionError):
+        with pytest.raises(AssertionError):
             self._assert_call_count(expected_call_count, actual_call_count)
 
     def _assert_call_count(self, expected_call_count: ExpectedCallCount, actual_call_count: int) -> None:

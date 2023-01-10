@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import copy
 from typing import Union, TYPE_CHECKING, Iterable, Tuple
-from unittest import TestCase
 
 import dill as pickle
 
@@ -21,7 +20,7 @@ class _Reactive(Reactive):
         self.react = ReactorController()
 
 
-class ReactiveMappingTest(TestCase):
+class TestReactiveMapping:
     def test___getstate__(self) -> None:
         value = _Reactive()
         sut = ReactiveMapping[str, Reactive](value=value)
@@ -29,8 +28,8 @@ class ReactiveMappingTest(TestCase):
         copied_value = copied_sut['value']
 
         # Assert that the copy contains exactly one value which is a copy of the original.
-        self.assertEqual(1, len(copied_sut))
-        self.assertIsNot(value, copied_value)
+        assert 1 == len(copied_sut)
+        assert value != copied_value
 
         # Assert that triggering the original does not trigger the copy.
         with assert_not_reactor_called(copied_sut):
@@ -61,8 +60,8 @@ class ReactiveMappingTest(TestCase):
         copied_sut = copy.copy(sut)
 
         # Assert that the copy contains exactly the same values as the original.
-        self.assertEqual(1, len(copied_sut))
-        self.assertIs(value, copied_sut['value'])
+        assert 1 == len(copied_sut)
+        assert value is copied_sut['value']
 
         # Assert that triggering the original does not trigger the copy.
         with assert_not_reactor_called(copied_sut):
@@ -84,8 +83,8 @@ class ReactiveMappingTest(TestCase):
         copied_value = copied_sut['value']
 
         # Assert that the copy contains exactly one value which is a copy of the original.
-        self.assertEqual(1, len(copied_sut))
-        self.assertIsNot(value, copied_value)
+        assert 1 == len(copied_sut)
+        assert value is not copied_value
 
         # Assert that triggering the original does not trigger the copy.
         with assert_not_reactor_called(copied_sut):
@@ -112,79 +111,79 @@ class ReactiveMappingTest(TestCase):
     def test_get(self) -> None:
         sut = ReactiveMapping[str, int](one=1, two=2)
         with assert_in_scope(sut):
-            self.assertEqual(2, sut.get('two'))
+            assert 2 == sut.get('two')
 
     def test_get_with_default(self) -> None:
         sut = ReactiveMapping[str, int](one=1, two=2)
         with assert_in_scope(sut):
-            self.assertEqual(3, sut.get('three', 3))
+            assert 3 == sut.get('three', 3)
 
     def test_items(self) -> None:
         sut = ReactiveMapping[str, int](one=1, two=2)
         with assert_in_scope(sut):
-            self.assertEqual([('one', 1), ('two', 2)], list(sut.items()))
+            assert [('one', 1), ('two', 2)] == list(sut.items())
 
     def test_keys(self) -> None:
         sut = ReactiveMapping[str, int](one=1, two=2)
         with assert_in_scope(sut):
-            self.assertEqual(['one', 'two'], list(sut.keys()))
+            assert ['one', 'two'] == list(sut.keys())
 
     def test_values(self) -> None:
         sut = ReactiveMapping[str, int](one=1, two=2)
         with assert_in_scope(sut):
-            self.assertEqual({'one': 1, 'two': 2}, dict(sut.items()))
+            assert {'one': 1, 'two': 2} == dict(sut.items())
 
     def test_contains(self) -> None:
         sut = ReactiveMapping[str, int](one=1, two=2)
         with assert_in_scope(sut):
-            self.assertIn('one', sut)
-            self.assertNotIn('three', sut)
+            assert 'one' in sut
+            assert 'three' not in sut
 
     def test_eq(self) -> None:
         sut = ReactiveMapping[str, int](one=1, two=2)
         with assert_in_scope(sut):
-            self.assertEqual({
+            assert {
                 'one': 1,
                 'two': 2,
-            }, sut)
+            } == sut
 
     def test_getitem(self) -> None:
         sut = ReactiveMapping[str, int](one=1, two=2)
         with assert_in_scope(sut):
-            self.assertEqual(2, sut['two'])
+            assert 2 == sut['two']
 
     def test_iter(self) -> None:
         sut = ReactiveMapping[str, int](one=1, two=2)
         with assert_in_scope(sut):
-            self.assertCountEqual(['one', 'two'], iter(sut))
+            assert ['one', 'two'] == list(iter(sut))
 
     def test_len(self) -> None:
         sut = ReactiveMapping[str, int](one=1, two=2)
         with assert_in_scope(sut):
-            self.assertEqual(2, len(sut))
+            assert 2 == len(sut)
 
     def test_ne(self) -> None:
         sut = ReactiveMapping[str, int](one=1, two=2)
         with assert_in_scope(sut):
-            self.assertNotEqual({
+            assert {
                 'two': 1,
                 'one': 2,
-            }, sut)
+            } != sut
 
     def test_reversed(self) -> None:
         sut = ReactiveMapping[str, int](one=1, two=2)
         with assert_in_scope(sut):
-            self.assertEqual(['two', 'one'], list(reversed(sut)))
+            assert ['two', 'one'] == list(reversed(sut))
 
 
-class ReactiveMutableMappingTest(TestCase):
+class TestReactiveMutableMapping:
     def test_clear(self) -> None:
         reactive_value = _Reactive()
         sut = ReactiveMutableMapping[str, Union[Reactive, int]](one=1, reactive=reactive_value)
         with assert_scope_empty():
             with assert_reactor_called(sut):
                 sut.clear()
-        self.assertCountEqual({}, dict(sut))
+        assert {} == dict(sut)
         with assert_not_reactor_called(sut):
             reactive_value.react.trigger()
 
@@ -194,7 +193,7 @@ class ReactiveMutableMappingTest(TestCase):
         with assert_scope_empty():
             with assert_reactor_called(sut):
                 sut.pop('reactive')
-        self.assertEqual({}, dict(sut))
+        assert {} == dict(sut)
         with assert_not_reactor_called(sut):
             reactive_value.react.trigger()
 
@@ -203,8 +202,8 @@ class ReactiveMutableMappingTest(TestCase):
         sut = ReactiveMutableMapping[str, Reactive](reactive=reactive_value)
         with assert_scope_empty():
             with assert_reactor_called(sut):
-                self.assertEqual(3, sut.pop('three', 3))
-        self.assertEqual(dict(reactive=reactive_value), dict(sut))
+                assert 3 == sut.pop('three', 3)
+        assert dict(reactive=reactive_value) == dict(sut)
 
     def test_popitem(self) -> None:
         reactive_value = _Reactive()
@@ -212,9 +211,9 @@ class ReactiveMutableMappingTest(TestCase):
         with assert_scope_empty():
             with assert_reactor_called(sut):
                 key, value = sut.popitem()
-        self.assertEqual('reactive', key)
-        self.assertEqual(reactive_value, value)
-        self.assertEqual({}, dict(sut))
+        assert 'reactive' == key
+        assert reactive_value == value
+        assert {} == dict(sut)
         with assert_not_reactor_called(sut):
             reactive_value.react.trigger()
 
@@ -223,14 +222,14 @@ class ReactiveMutableMappingTest(TestCase):
         sut = ReactiveMutableMapping[str, Union[Reactive, str]](reactive=reactive_value)
         with assert_in_scope(sut):
             with assert_not_reactor_called(sut):
-                self.assertEqual(reactive_value, sut.setdefault('reactive'))
+                assert reactive_value == sut.setdefault('reactive')
 
     def test_setdefault_with_unknown_key(self) -> None:
         sut = ReactiveMutableMapping[str, Reactive]()
         with assert_in_scope(sut):
             with assert_reactor_called(sut):
-                self.assertIsNone(sut.setdefault('reactive'))
-        self.assertIsNone(sut['reactive'])
+                assert sut.setdefault('reactive') is None
+        assert sut['reactive'] is None
 
     def test_setdefault_with_existing_key_with_value(self) -> None:
         reactive_value = _Reactive()
@@ -238,7 +237,7 @@ class ReactiveMutableMappingTest(TestCase):
         with assert_in_scope(sut):
             with assert_not_reactor_called(sut):
                 sut.setdefault('reactive', reactive_value)
-        self.assertNotEqual(reactive_value, sut['reactive'])
+        assert reactive_value != sut['reactive']
         with assert_not_reactor_called(sut):
             reactive_value.react.trigger()
 
@@ -248,7 +247,7 @@ class ReactiveMutableMappingTest(TestCase):
         with assert_in_scope(sut):
             with assert_reactor_called(sut):
                 sut.setdefault('reactive', reactive_value)
-        self.assertEqual(reactive_value, sut['reactive'])
+        assert reactive_value == sut['reactive']
         with assert_reactor_called(sut):
             reactive_value.react.trigger()
 
@@ -263,11 +262,11 @@ class ReactiveMutableMappingTest(TestCase):
         with assert_scope_empty():
             with assert_reactor_called(sut):
                 sut.update(update_value)
-        self.assertEqual({
+        assert {
             'reactive_1': reactive_value_1,
             'reactive_2': reactive_value_2,
             'two': 2,
-        }, dict(sut))
+        } == dict(sut)
         with assert_reactor_called(sut):
             reactive_value_1.react.trigger()
         with assert_reactor_called(sut):
@@ -284,11 +283,11 @@ class ReactiveMutableMappingTest(TestCase):
         with assert_scope_empty():
             with assert_reactor_called(sut):
                 sut.update(update_value)
-        self.assertEqual({
+        assert {
             'reactive_1': reactive_value_1,
             'reactive_2': reactive_value_2,
             'two': 2,
-        }, dict(sut))
+        } == dict(sut)
         with assert_reactor_called(sut):
             reactive_value_1.react.trigger()
         with assert_reactor_called(sut):
@@ -301,11 +300,11 @@ class ReactiveMutableMappingTest(TestCase):
         with assert_scope_empty():
             with assert_reactor_called(sut):
                 sut.update(reactive_2=reactive_value_2, two=2)
-        self.assertEqual({
+        assert {
             'reactive_1': reactive_value_1,
             'reactive_2': reactive_value_2,
             'two': 2,
-        }, dict(sut))
+        } == dict(sut)
         with assert_reactor_called(sut):
             reactive_value_1.react.trigger()
         with assert_reactor_called(sut):
@@ -317,7 +316,7 @@ class ReactiveMutableMappingTest(TestCase):
         with assert_scope_empty():
             with assert_reactor_called(sut):
                 del sut['reactive']
-        self.assertEqual({}, dict(sut))
+        assert {} == dict(sut)
         with assert_not_reactor_called(sut):
             reactive_value.react.trigger()
 
@@ -327,12 +326,12 @@ class ReactiveMutableMappingTest(TestCase):
         with assert_scope_empty():
             with assert_reactor_called(sut):
                 sut['reactive'] = reactive_value
-        self.assertEqual(reactive_value, sut['reactive'])
+        assert reactive_value == sut['reactive']
         with assert_reactor_called(sut):
             reactive_value.react.trigger()
 
 
-class ReactiveSequenceTest(TestCase):
+class TestReactiveSequence:
     def test___getstate__(self) -> None:
         value = _Reactive()
         sut = ReactiveSequence[Reactive]([value])
@@ -340,8 +339,8 @@ class ReactiveSequenceTest(TestCase):
         copied_value = copied_sut[0]
 
         # Assert that the copy contains exactly one value which is a copy of the original.
-        self.assertEqual(1, len(copied_sut))
-        self.assertIsNot(value, copied_value)
+        assert 1 == len(copied_sut)
+        assert value is not copied_value
 
         # Assert that triggering the original does not trigger the copy.
         with assert_not_reactor_called(copied_sut):
@@ -372,8 +371,8 @@ class ReactiveSequenceTest(TestCase):
         copied_sut = copy.copy(sut)
 
         # Assert that the copy contains exactly the same values as the original.
-        self.assertEqual(1, len(copied_sut))
-        self.assertIs(value, copied_sut[0])
+        assert 1 == len(copied_sut)
+        assert value is copied_sut[0]
 
         # Assert that triggering the original does not trigger the copy.
         with assert_not_reactor_called(copied_sut):
@@ -395,8 +394,8 @@ class ReactiveSequenceTest(TestCase):
         copied_value = copied_sut[0]
 
         # Assert that the copy contains exactly one value which is a copy of the original.
-        self.assertEqual(1, len(copied_sut))
-        self.assertIsNot(value, copied_value)
+        assert 1 == len(copied_sut)
+        assert value is not copied_value
 
         # Assert that triggering the original does not trigger the copy.
         with assert_not_reactor_called(copied_sut):
@@ -424,56 +423,56 @@ class ReactiveSequenceTest(TestCase):
     def test_count(self) -> None:
         sut = ReactiveSequence[int]([1, 2, 1])
         with assert_in_scope(sut):
-            self.assertEqual(2, sut.count(1))
+            assert 2 == sut.count(1)
 
     def test_index_without_slice(self) -> None:
         sut = ReactiveSequence[int]([1, 2, 1, 2, 1, 2, 1, 2])
         with assert_in_scope(sut):
-            self.assertEqual(1, sut.index(2))
+            assert 1 == sut.index(2)
 
     def test_index_with_slice(self) -> None:
         sut = ReactiveSequence[int]([1, 2, 1, 2, 1, 2, 1, 2])
         with assert_in_scope(sut):
-            self.assertEqual(2, sut.index(1, 2, 5))
+            assert 2 == sut.index(1, 2, 5)
 
     def test_contains(self) -> None:
         sut = ReactiveSequence[int]([1])
         with assert_in_scope(sut):
-            self.assertIn(1, sut)
-            self.assertNotIn(2, sut)
+            assert 1 in sut
+            assert 2 not in sut
 
     def test___getitem_with_int(self) -> None:
         sut = ReactiveSequence[int]([1, 2])
         with assert_in_scope(sut):
-            self.assertEqual(2, sut[1])
+            assert 2 == sut[1]
 
     def test___getitem_with_slice(self) -> None:
         sut = ReactiveSequence[int]([1, 2])
         with assert_in_scope(sut):
-            self.assertEqual([1, 2], list(sut[0:2]))
+            assert [1, 2] == list(sut[0:2])
 
     def test_iter(self) -> None:
         sut = ReactiveSequence[int]([1, 2])
         with assert_in_scope(sut):
-            self.assertEqual([1, 2], list(iter(sut)))
+            assert [1, 2] == list(iter(sut))
 
     def test_len(self) -> None:
         sut = ReactiveSequence[int]([1, 2])
         with assert_in_scope(sut):
-            self.assertEqual(2, len(sut))
+            assert 2 == len(sut)
 
     def test_ne(self) -> None:
         sut = ReactiveSequence[int]([1, 2])
         with assert_in_scope(sut):
-            self.assertNotEqual([2, 1], list(sut))
+            assert [2, 1] != list(sut)
 
     def test_reversed(self) -> None:
         sut = ReactiveSequence[int]([1, 2])
         with assert_in_scope(sut):
-            self.assertEqual([2, 1], list(reversed(sut)))
+            assert [2, 1] == list(reversed(sut))
 
 
-class ReactiveMutableSequenceTest(TestCase):
+class TestReactiveMutableSequence:
     def test_append(self) -> None:
         reactive_value = _Reactive()
         sut = ReactiveMutableSequence[Reactive]()
@@ -489,7 +488,7 @@ class ReactiveMutableSequenceTest(TestCase):
         with assert_scope_empty():
             with assert_reactor_called(sut):
                 sut.clear()
-        self.assertEqual([], list(sut))
+        assert [] == list(sut)
         with assert_not_reactor_called(sut):
             reactive_value.react.trigger()
 
@@ -500,7 +499,7 @@ class ReactiveMutableSequenceTest(TestCase):
         with assert_scope_empty():
             with assert_reactor_called(sut):
                 sut.extend([reactive_value1, reactive_value2])
-        self.assertEqual([1, 2, reactive_value1, reactive_value2], list(sut))
+        assert [1, 2, reactive_value1, reactive_value2] == list(sut)
         with assert_reactor_called(sut):
             reactive_value1.react.trigger()
         with assert_reactor_called(sut):
@@ -512,7 +511,7 @@ class ReactiveMutableSequenceTest(TestCase):
         with assert_scope_empty():
             with assert_reactor_called(sut):
                 sut.insert(1, reactive_value)
-        self.assertEqual([1, reactive_value, 2], list(sut))
+        assert [1, reactive_value, 2] == list(sut)
         with assert_reactor_called(sut):
             reactive_value.react.trigger()
 
@@ -522,7 +521,7 @@ class ReactiveMutableSequenceTest(TestCase):
         with assert_scope_empty():
             with assert_reactor_called(sut):
                 sut.pop()
-        self.assertEqual([1, 2], list(sut))
+        assert [1, 2] == list(sut)
         with assert_not_reactor_called(sut):
             reactive_value.react.trigger()
 
@@ -532,7 +531,7 @@ class ReactiveMutableSequenceTest(TestCase):
         with assert_scope_empty():
             with assert_reactor_called(sut):
                 sut.pop(1)
-        self.assertEqual([1, 2], list(sut))
+        assert [1, 2] == list(sut)
         with assert_not_reactor_called(sut):
             reactive_value.react.trigger()
 
@@ -542,7 +541,7 @@ class ReactiveMutableSequenceTest(TestCase):
         with assert_scope_empty():
             with assert_reactor_called(sut):
                 sut.remove(reactive_value)
-        self.assertEqual([], list(sut))
+        assert [] == list(sut)
         with assert_not_reactor_called(sut):
             reactive_value.react.trigger()
 
@@ -552,7 +551,7 @@ class ReactiveMutableSequenceTest(TestCase):
         with assert_scope_empty():
             with assert_reactor_called(sut):
                 del sut[0]
-        self.assertEqual([], list(sut))
+        assert [] == list(sut)
         with assert_not_reactor_called(sut):
             reactive_value.react.trigger()
 
@@ -563,7 +562,7 @@ class ReactiveMutableSequenceTest(TestCase):
         with assert_scope_empty():
             with assert_reactor_called(sut):
                 sut += [reactive_value1, reactive_value2]
-        self.assertEqual([1, 2, reactive_value1, reactive_value2], list(sut))
+        assert [1, 2, reactive_value1, reactive_value2] == list(sut)
         with assert_reactor_called(sut):
             reactive_value1.react.trigger()
         with assert_reactor_called(sut):
@@ -575,7 +574,7 @@ class ReactiveMutableSequenceTest(TestCase):
         with assert_scope_empty():
             with assert_reactor_called(sut):
                 sut[0] = reactive_value
-        self.assertEqual(reactive_value, sut[0])
+        assert reactive_value == sut[0]
         with assert_reactor_called(sut):
             reactive_value.react.trigger()
 
@@ -586,7 +585,7 @@ class ReactiveMutableSequenceTest(TestCase):
         with assert_scope_empty():
             with assert_reactor_called(sut):
                 sut[0:2] = reactive_value_1, reactive_value_2
-        self.assertEqual([reactive_value_1, reactive_value_2], list(sut[0:2]))
+        assert [reactive_value_1, reactive_value_2] == list(sut[0:2])
         with assert_reactor_called(sut):
             reactive_value_1.react.trigger()
         with assert_reactor_called(sut):
@@ -595,9 +594,9 @@ class ReactiveMutableSequenceTest(TestCase):
     def test___getitem__with_int(self) -> None:
         sut = ReactiveMutableSequence[int]([1, 2])
         with assert_in_scope(sut):
-            self.assertEqual(2, sut[1])
+            assert 2 == sut[1]
 
     def test___getitem__with_slice(self) -> None:
         sut = ReactiveMutableSequence[int]([1, 2])
         with assert_in_scope(sut):
-            self.assertEqual([1, 2], list(sut[0:2]))
+            assert [1, 2] == list(sut[0:2])

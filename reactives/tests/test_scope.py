@@ -1,5 +1,3 @@
-from unittest import TestCase
-
 from reactives import scope, Reactive
 from reactives.reactor import ReactorController
 
@@ -19,16 +17,16 @@ class _Reactive(Reactive):
         self.react = ReactorController()
 
 
-class CollectTest(TestCase):
+class TestCollect:
     def test_without_dependencies(self) -> None:
         reactive = _Reactive()
         with scope.collect(reactive):
             pass
-        self.assertEqual([], reactive.react._dependencies)
+        assert [] == reactive.react._dependencies
 
     def test_with_dependency(self) -> None:
         reactive = _Reactive()
         dependency = _Reactive()
         with scope.collect(reactive):
             scope.register(dependency)
-        self.assertIn(dependency.react, reactive.react._dependencies)
+        assert dependency.react in reactive.react._dependencies

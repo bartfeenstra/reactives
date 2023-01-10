@@ -3,7 +3,6 @@ from __future__ import annotations
 import copy
 import pickle
 from typing import cast
-from unittest import TestCase
 
 from parameterized import parameterized
 
@@ -59,7 +58,7 @@ class SubjectWithDeleter(Subject):
         self._subject = None
 
 
-class PropertyReactorControllerTest(TestCase):
+class TestPropertyReactorController:
     def test___copy__(self) -> None:
         subject = Subject()
         sut = subject.react.getattr_reactive('subject').react
@@ -164,10 +163,10 @@ class PropertyReactorControllerTest(TestCase):
         subject: Subject,
     ) -> None:
         cast(_PropertyReactorController, subject.react['subject'].react).trigger()
-        self.assertEqual(expected_property_value, subject.subject)
+        assert expected_property_value == subject.subject
 
 
-class ReactivePropertyTest(TestCase):
+class TestReactiveProperty:
     class SubjectWithGetterDependency(ReactiveInstance):
         def __init__(self) -> None:
             super().__init__()
@@ -207,7 +206,7 @@ class ReactivePropertyTest(TestCase):
         with assert_reactor_called(subject):
             with assert_reactor_called(subject.react['subject']):
                 subject.subject = dependency_one
-        self.assertEqual(dependency_one, subject.subject)
+        assert dependency_one == subject.subject
 
         # dependency_one being autowired should cause the reactor to be called.
         with assert_reactor_called(subject):
@@ -218,7 +217,7 @@ class ReactivePropertyTest(TestCase):
         with assert_reactor_called(subject):
             with assert_reactor_called(subject.react['subject']):
                 subject.subject = dependency_two
-        self.assertEqual(dependency_two, subject.subject)
+        assert dependency_two == subject.subject
 
         # dependency_one no longer being autowired should not cause the reactor to be called.
         with assert_not_reactor_called(subject):
@@ -232,7 +231,7 @@ class ReactivePropertyTest(TestCase):
         with assert_reactor_called(subject):
             with assert_reactor_called(subject.react['subject']):
                 del subject.subject
-        self.assertIsNone(subject._subject)
+        assert subject._subject is None
 
         # dependency_one no longer being autowired should not cause the reactor to be called.
         with assert_not_reactor_called(subject):

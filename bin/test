@@ -15,7 +15,7 @@ mypy
 
 # Run Python tests with coverage.
 coverage erase
-PYTHONUTF8=1 PYTHONWARNINGS=error coverage run -a -m nose2
+PYTHONWARNINGS='error:::betty[.*]' coverage run --append -m pytest
 coverage report -m
 
 # Test the built Python package.
