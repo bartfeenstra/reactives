@@ -9,12 +9,13 @@ class _NotReactive:
 
 
 class _NotReactiveWithAttribute:
-    def __init__(self):
+    def __init__(self) -> None:
         self.react = None
 
 
 class _Reactive(Reactive):
-    def __init__(self):
+    def __init__(self) -> None:
+        super().__init__()
         self.react = ReactorController()
 
 
@@ -30,4 +31,4 @@ class CollectTest(TestCase):
         dependency = _Reactive()
         with scope.collect(reactive):
             scope.register(dependency)
-        self.assertEqual([dependency], reactive.react._dependencies)
+        self.assertIn(dependency.react, reactive.react._dependencies)
