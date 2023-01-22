@@ -37,6 +37,9 @@ class _PropertyReactorController(ReactorController):
         self._instance = instance
         self._attribute_name = attribute_name
 
+    def __repr__(self) -> str:
+        return f'<{self.__class__.__module__}.{self.__class__.__qualname__} object at {hex(id(self))} for the property "{self._attribute_name}" of {self._instance.__class__.__module__}.{self._instance.__class__.__qualname__} at {hex(id(self._instance))}>'
+
     def __getstate__(self) -> Dict[str, Any]:
         state = super().__getstate__()
         state['_instance'] = self._instance
