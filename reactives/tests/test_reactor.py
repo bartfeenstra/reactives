@@ -192,37 +192,44 @@ class TestReactorController:
 
     def test_react_with_reactor(self) -> None:
         sut = ReactorController()
-        with assert_reactor_called() as reactor:
-            sut.react(reactor)
-            sut.trigger()
+        reactor = AssertCallCountReactor(sut)
+        sut.react(reactor)
+        sut.trigger()
+        reactor.assert_call_count()
 
     def test___call___with_reactor(self) -> None:
         sut = ReactorController()
-        with assert_reactor_called() as reactor:
-            sut(reactor)
-            sut.trigger()
+        reactor = AssertCallCountReactor(sut)
+        sut(reactor)
+        sut.trigger()
+        reactor.assert_call_count()
 
     def test_shutdown(self) -> None:
         sut = ReactorController()
-        with assert_not_reactor_called() as reactor_1:
-            with assert_not_reactor_called() as reactor_2:
-                sut.react(reactor_1, reactor_2)
-                sut.shutdown()
-                sut.trigger()
+        reactor_not_called_one = AssertCallCountReactor(sut, 0)
+        reactor_not_called_two = AssertCallCountReactor(sut, 0)
+        sut.react(reactor_not_called_one, reactor_not_called_two)
+        sut.shutdown()
+        sut.trigger()
+        reactor_not_called_one.assert_call_count()
+        reactor_not_called_two.assert_call_count()
 
     def test_shutdown_with_specified_reactors(self) -> None:
         sut = ReactorController()
-        with assert_reactor_called() as reactor_called:
-            with assert_not_reactor_called() as reactor_not_called:
-                sut.react(reactor_called, reactor_not_called)
-                sut.shutdown(reactor_not_called)
-                sut.trigger()
+        reactor_called = AssertCallCountReactor(sut)
+        reactor_not_called = AssertCallCountReactor(sut, 0)
+        sut.react(reactor_called, reactor_not_called)
+        sut.shutdown(reactor_not_called)
+        sut.trigger()
+        reactor_called.assert_call_count()
+        reactor_not_called.assert_call_count()
 
     def test_react_weakref_with_method(self) -> None:
+        sut = ReactorController()
+
         class _Raise:
             def _raise(self) -> None:
-                AssertCallCountReactor(0)()
-        sut = ReactorController()
+                AssertCallCountReactor(sut, 0)()
         _raise = _Raise()
         sut.react_weakref(_raise._raise)
         del _raise
@@ -230,7 +237,7 @@ class TestReactorController:
 
     def test_react_weakref(self) -> None:
         sut = ReactorController()
-        reactor = AssertCallCountReactor(0)
+        reactor = AssertCallCountReactor(sut, 0)
         sut.react_weakref(reactor)
         del reactor
         sut.trigger()
@@ -279,7 +286,8 @@ class TestAssertCallCountReactor:
             self._assert_call_count(expected_call_count, actual_call_count)
 
     def _assert_call_count(self, expected_call_count: ExpectedCallCount, actual_call_count: int) -> None:
-        sut = AssertCallCountReactor(expected_call_count)
+        reactor_controller = ReactorController()
+        sut = AssertCallCountReactor(reactor_controller, expected_call_count)
         for _ in range(0, actual_call_count):
             sut()
         sut.assert_call_count()

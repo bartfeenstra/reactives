@@ -43,7 +43,7 @@ class CallableDefinition(Generic[ParamT, ReturnT]):
         self.callable = _callable
         self.on_trigger_call = on_trigger_call
 
-    def _call(self, reactive_attribute: Reactive, *args: ParamT.args, **kwargs: ParamT.kwargs) -> ReturnT:
-        scope.register(reactive_attribute)
-        with scope.collect(reactive_attribute):
+    def _call(self, reactive_callable: Reactive, *args: ParamT.args, **kwargs: ParamT.kwargs) -> ReturnT:
+        scope.register(reactive_callable)
+        with scope.collect(reactive_callable):
             return self.callable(*args, **kwargs)

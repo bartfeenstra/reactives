@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from contextlib import suppress, contextmanager
-from enum import IntEnum, auto
+from contextlib import contextmanager
 from typing import Dict, Callable, TypeVar, overload, Generic, Any, cast, Iterator
 
 from reactives import scope, Reactive
@@ -19,16 +18,6 @@ SetterT = TypeVar('SetterT')
 Getter = Callable[[ReactiveInstanceT], GetterT]
 Setter = Callable[[ReactiveInstanceT, SetterT], None]
 Deleter = Callable[[ReactiveInstanceT], None]
-
-
-class OnTriggerDelete(IntEnum):
-    # Do not attempt to delete the property when it is triggered.
-    NO_DELETE = auto()
-    # Attempt to delete the property when it is triggered, but suppress AttributeError which is raised if the property
-    # is non-deletable. If your property deleter may also raise AttributeError for other reasons, use DELETE instead.
-    DELETE_IF_DELETABLE = auto()
-    # Delete the property when it is triggered.
-    DELETE = auto()
 
 
 class _PropertyReactorController(ReactorController):
@@ -60,11 +49,8 @@ class _PropertyReactorController(ReactorController):
 
     def _on_trigger(self) -> None:
         attribute_definition = cast(_PropertyDefinition, self._instance.react.getattr_definition(self._attribute_name))
-        if OnTriggerDelete.DELETE == attribute_definition._on_trigger_delete:
+        if attribute_definition._on_trigger_delete:
             delattr(self._instance, self._attribute_name)
-        elif OnTriggerDelete.DELETE_IF_DELETABLE == attribute_definition._on_trigger_delete:
-            with suppress(AttributeError):
-                delattr(self._instance, self._attribute_name)
 
 
 class _PropertyDefinition(Setattr[ReactiveInstanceT, SetterT], Delattr[ReactiveInstanceT], Generic[ReactiveInstanceT, GetterT, SetterT]):
@@ -72,7 +58,7 @@ class _PropertyDefinition(Setattr[ReactiveInstanceT, SetterT], Delattr[ReactiveI
         self,
         getter: Getter[ReactiveInstanceT, GetterT],
         *,
-        on_trigger_delete: OnTriggerDelete = OnTriggerDelete.DELETE_IF_DELETABLE,
+        on_trigger_delete: bool = False,
     ):
         super().__init__(getter)
         self._getter = getter
@@ -82,8 +68,9 @@ class _PropertyDefinition(Setattr[ReactiveInstanceT, SetterT], Delattr[ReactiveI
         return _PropertyReactorController(instance, self._getter.__name__)
 
     def __call__(self, instance: ReactiveInstanceT) -> GetterT:
-        scope.register(instance.react[self])
-        with scope.collect(instance.react[self]):
+        reactive_instance_attribute = instance.react[self]
+        scope.register(reactive_instance_attribute)
+        with scope.collect(reactive_instance_attribute):
             value = self._getter(instance)
             if isinstance(value, Reactive):
                 scope.register(value)
@@ -109,7 +96,7 @@ class _PropertyDefinition(Setattr[ReactiveInstanceT, SetterT], Delattr[ReactiveI
 @overload
 def reactive_property(
     *,
-    on_trigger_delete: OnTriggerDelete = OnTriggerDelete.DELETE_IF_DELETABLE,
+    on_trigger_delete: bool = False,
 ) -> Callable[[Callable[[ReactiveInstanceT], GetterT]], Getter[ReactiveInstanceT, GetterT]]:
     pass
 
@@ -118,7 +105,7 @@ def reactive_property(
 def reactive_property(
     getter: Getter[ReactiveInstanceT, GetterT],
     *,
-    on_trigger_delete: OnTriggerDelete = OnTriggerDelete.DELETE_IF_DELETABLE,
+    on_trigger_delete: bool = False,
 ) -> Getter[ReactiveInstanceT, GetterT]:
     pass
 
@@ -126,7 +113,7 @@ def reactive_property(
 def reactive_property(
     getter: Getter[ReactiveInstanceT, GetterT] | None = None,
     *,
-    on_trigger_delete: OnTriggerDelete = OnTriggerDelete.DELETE_IF_DELETABLE,
+    on_trigger_delete: bool = False,
 ) -> Getter[ReactiveInstanceT, GetterT] | Callable[[Getter[ReactiveInstanceT, GetterT]], Getter[ReactiveInstanceT, GetterT]]:
     def _decorator(
         decorator_getter: Getter[ReactiveInstanceT, GetterT],

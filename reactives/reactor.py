@@ -244,7 +244,7 @@ ExpectedCallCount = Union[int, Tuple[int, int], Tuple[int, None], Tuple[None, in
 
 
 class AssertCallCountReactor:
-    def __init__(self, expected_call_count: ExpectedCallCount):
+    def __init__(self, reactor_controller: ReactorController, expected_call_count: ExpectedCallCount = 1):
         self._exact_expected_call_count: int | None
         self._minimum_expected_call_count: int | None
         self._maximum_expected_call_count: int | None
@@ -256,6 +256,10 @@ class AssertCallCountReactor:
             self._exact_expected_call_count = None
             self._minimum_expected_call_count, self._maximum_expected_call_count = expected_call_count
         self._actual_call_count = 0
+        self._reactor_controller = reactor_controller
+
+    def __repr__(self) -> str:
+        return f'<{self.__class__.__module__}.{self.__class__.__qualname__} object at {hex(id(self))} for {repr(self._reactor_controller)}>'
 
     def __call__(self) -> None:
         self._actual_call_count += 1
