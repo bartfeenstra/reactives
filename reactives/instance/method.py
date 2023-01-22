@@ -18,6 +18,15 @@ Method: TypeAlias = Callable[
 ]
 
 
+class MethodReactorController(CallableReactorController):
+    def __init__(self, callable_definition: CallableDefinition, instance: ReactiveInstance):
+        super().__init__(callable_definition)
+        self._instance = instance
+
+    def __repr__(self) -> str:
+        return f'<{self.__class__.__module__}.{self.__class__.__qualname__} object at {hex(id(self))} for the method "{self._callable_definition.callable.__name__}" of {self._instance.__class__.__module__}.{self._instance.__class__.__qualname__} at {hex(id(self._instance))}>'
+
+
 class _MethodDefinition(CallableDefinition[Concatenate[ReactiveInstanceT, ParamT], ReturnT], InstanceAttributeDefinition, Generic[ReactiveInstanceT, ParamT, ReturnT]):
     def __init__(
         self,
@@ -27,7 +36,7 @@ class _MethodDefinition(CallableDefinition[Concatenate[ReactiveInstanceT, ParamT
         **kwargs: Any,
     ):
         super().__init__(
-            function,  # type: ignore [arg-type]
+            function,  # type: ignore[arg-type]
             function,
             *args,
             on_trigger_call=on_trigger_call,
@@ -35,9 +44,7 @@ class _MethodDefinition(CallableDefinition[Concatenate[ReactiveInstanceT, ParamT
         )
 
     def create_instance_attribute_reactor_controller(self, instance: ReactiveInstance) -> ReactorController:
-        return CallableReactorController(
-            getattr(instance, self.__name__) if self._on_trigger_call else None,
-        )
+        return MethodReactorController(self, instance)
 
     @overload
     def __get__(self, instance: None, owner: object) -> Self:

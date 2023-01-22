@@ -124,6 +124,9 @@ class _ReactiveInstanceReactorController(ReactorController, Generic[ReactiveInst
         self._reactive_attributes: Dict[str | InstanceAttributeDefinition, _ReactiveInstanceAttribute] = {}
         self._initialized = False
 
+    def __repr__(self) -> str:
+        return f'<{self.__class__.__module__}.{self.__class__.__qualname__} object at {hex(id(self))} for {self._instance.__class__.__module__}.{self._instance.__class__.__qualname__} at {hex(id(self._instance))}>'
+
     def _update(self, other: Self) -> None:
         for attribute_name, _ in other._reactive_attributes.items():
             with suppress(ValueError):
