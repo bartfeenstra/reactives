@@ -181,9 +181,17 @@ class ReactorController:
             return reactor.react
         return reactor
 
+    def _append_reactor(self, reactor: ReactorGraphNode | ReferenceType[ReactorGraphNode]) -> None:
+        if reactor not in self.__reactors:
+            self.__reactors.append(reactor)
+
     def react(self, *reactors: ResolvableReactor) -> None:
         for reactor in reactors:
-            self.__reactors.append(self._resolve_reactor(reactor))
+            self._append_reactor(self._resolve_reactor(reactor))
+
+    def react_weakref(self, *reactors: ResolvableReactor) -> None:
+        for reactor in reactors:
+            self._append_reactor(self._weakref(self._resolve_reactor(reactor), self._shutdown_reactor))
 
     def shutdown(self, *reactors: ResolvableReactor) -> None:
         if not reactors:
@@ -202,10 +210,6 @@ class ReactorController:
         )))):
             if reactor == self_reactor:
                 del self.__reactors[i]
-
-    def react_weakref(self, *reactors: ResolvableReactor) -> None:
-        for reactor in reactors:
-            self.__reactors.append(self._weakref(self._resolve_reactor(reactor), self._shutdown_reactor))
 
 
 Reactor: TypeAlias = Callable[[], Any]
