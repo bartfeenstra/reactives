@@ -95,7 +95,7 @@ apple.react['apple'].react.trigger()
 # >>> "The apple got triggered!"
 ```
 
-If a property *deleter* is present, it will be called automatically when the property is triggered:
+If a property *deleter* is present, it may be called automatically when the property is triggered:
 ```python
 from reactives.instance import ReactiveInstance
 from reactives.instance.property import reactive_property
@@ -106,7 +106,7 @@ class Apple(ReactiveInstance):
         self._cached_something = None
 
     @property
-    @reactive_property
+    @reactive_property(on_trigger_delete=True)
     def apple(self) -> str:
         if self._cached_something is None:
             self._cached_something = 'I got you something!'
@@ -122,35 +122,6 @@ print(apple.apple)
 apple.react['apple'].react.trigger()
 print(apple.apple)
 # >>> "I got you nothing!"
-```
-
-If you do not want automatic deletion, configure the property's `@reactive` decorator as such:
-```python
-from reactives.instance import ReactiveInstance
-from reactives.instance.property import OnTriggerDelete, reactive_property
-
-class Apple(ReactiveInstance):
-    def __init__(self):
-        super().__init__()
-        self._cached_something = None
-
-    @property
-    @reactive_property(on_trigger_delete=OnTriggerDelete.NO_DELETE)
-    def apple(self) -> str:
-        if self._cached_something is None:
-            self._cached_something = 'I got you something!'
-        return self._cached_something
-
-    @apple.deleter
-    def apple(self)  -> None:
-        self._cached_something = 'I got you nothing!'
-
-apple = Apple()
-print(apple.apple)
-# >>> "I got you something!"
-apple.react['apple'].react.trigger()
-print(apple.apple)
-# >>> "I got you something!"
 ```
 
 Property *setters* work exactly like with any other `property`:

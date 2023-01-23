@@ -8,12 +8,17 @@ from parameterized import parameterized
 
 from reactives.function import reactive_function
 from reactives.instance import ReactiveInstance
-from reactives.instance.property import reactive_property, OnTriggerDelete, _PropertyReactorController
+from reactives.instance.property import reactive_property, _PropertyReactorController
 from reactives.tests import assert_not_reactor_called, assert_reactor_called
 
 
 @reactive_function
-def dependency() -> None:
+def dependency_one() -> None:
+    dependency_two()
+
+
+@reactive_function
+def dependency_two() -> None:
     pass
 
 
@@ -82,43 +87,33 @@ class TestPropertyReactorController:
             super().__init__()
             self._subject: int | None = 123
 
-    class _SubjectWithOnTriggerDeleteIsNoDelete(_Subject):
+    class _SubjectWithOnTriggerDeleteIsFalse(_Subject):
         def __init__(self) -> None:
             super().__init__()
             self._subject: int | None = 123
 
         @property
-        @reactive_property(on_trigger_delete=OnTriggerDelete.NO_DELETE)
+        @reactive_property(on_trigger_delete=False)
         def subject(self) -> int | None:
             return self._subject
 
-    class _SubjectWithOnTriggerDeleteIsDeleteIfDeletable(_Subject):
+    class _SubjectWithOnTriggerDeleteIsTrue(_Subject):
         def __init__(self) -> None:
             super().__init__()
             self._subject: int | None = 123
 
         @property
-        @reactive_property(on_trigger_delete=OnTriggerDelete.DELETE_IF_DELETABLE)
+        @reactive_property(on_trigger_delete=True)
         def subject(self) -> int | None:
             return self._subject
 
-    class _SubjectWithOnTriggerDeleteIsDelete(_Subject):
+    class _SubjectWithOnTriggerDeleteIsFalseWithDeleter(_Subject):
         def __init__(self) -> None:
             super().__init__()
             self._subject: int | None = 123
 
         @property
-        @reactive_property(on_trigger_delete=OnTriggerDelete.DELETE)
-        def subject(self) -> int | None:
-            return self._subject
-
-    class _SubjectWithOnTriggerDeleteIsNoDeleteWithDeleter(_Subject):
-        def __init__(self) -> None:
-            super().__init__()
-            self._subject: int | None = 123
-
-        @property
-        @reactive_property(on_trigger_delete=OnTriggerDelete.NO_DELETE)
+        @reactive_property(on_trigger_delete=False)
         def subject(self) -> int | None:
             return self._subject
 
@@ -126,23 +121,9 @@ class TestPropertyReactorController:
         def subject(self) -> None:
             self._subject = None
 
-    class _SubjectWithOnTriggerDeleteIsDeleteIfDeletableWithDeleter(_Subject):
-        def __init__(self) -> None:
-            super().__init__()
-            self._subject: int | None = 123
-
+    class _SubjectWithOnTriggerDeleteIsTrueWithDeleter(_Subject):
         @property
-        @reactive_property(on_trigger_delete=OnTriggerDelete.DELETE_IF_DELETABLE)
-        def subject(self) -> int | None:
-            return self._subject
-
-        @subject.deleter
-        def subject(self) -> None:
-            self._subject = None
-
-    class _SubjectWithOnTriggerDeleteIsDeleteWithDeleter(_Subject):
-        @property
-        @reactive_property(on_trigger_delete=OnTriggerDelete.DELETE)
+        @reactive_property(on_trigger_delete=True)
         def subject(self) -> int | None:
             return self._subject
 
@@ -151,11 +132,9 @@ class TestPropertyReactorController:
             self._subject = None
 
     @parameterized.expand([
-        (123, _SubjectWithOnTriggerDeleteIsNoDeleteWithDeleter()),
-        (None, _SubjectWithOnTriggerDeleteIsDeleteIfDeletableWithDeleter()),
-        (None, _SubjectWithOnTriggerDeleteIsDeleteWithDeleter()),
-        (123, _SubjectWithOnTriggerDeleteIsNoDelete()),
-        (123, _SubjectWithOnTriggerDeleteIsDeleteIfDeletable()),
+        (123, _SubjectWithOnTriggerDeleteIsFalseWithDeleter()),
+        (None, _SubjectWithOnTriggerDeleteIsTrueWithDeleter()),
+        (123, _SubjectWithOnTriggerDeleteIsFalse()),
     ])
     def test_on_trigger_delete(
         self,
@@ -177,25 +156,35 @@ class TestReactiveProperty:
         def subject(self) -> None:
             if not self._subject_called:
                 self._subject_called = True
-                dependency()
+                dependency_one()
             return None
 
     def test_getter(self) -> None:
         subject = self.SubjectWithGetterDependency()
 
-        # Call the reactive for the first time. This should result in dependency() being autowired.
+        # Call the reactive for the first time. This should result in dependency_one() being autowired to
+        # subject.subject()
         subject.subject
 
-        with assert_reactor_called(subject):
-            # dependency() being autowired should cause the reactor to be called.
-            dependency.react.trigger()
+        # dependency_one() being autowired to subject.subject() should cause subject.subject() to be triggered.
+        with assert_reactor_called(subject.react['subject']):
+            dependency_one.react.trigger()
+
+        # dependency_two() being autowired to dependency_one() should cause subject.subject() and dependency_one() to be
+        # triggered.
+        with assert_reactor_called(subject.react['subject']):
+            with assert_reactor_called(dependency_one):
+                dependency_two.react.trigger()
+
+        # Ensure that dependencies are only added to the direct calling scope, and not to ancestors' scopes.
+        assert dependency_one.react in list(dependency_two.react._reactors)
 
         # Call the reactive again. This should result in dependency() being ignored and not to be autowired again.
         subject.subject
 
-        # dependency() no longer being autowired should not cause the reactor to be called.
-        with assert_not_reactor_called(subject):
-            dependency.react.trigger()
+        # dependency_one() no longer being autowired should not cause subject.subject() to be triggered.
+        with assert_not_reactor_called(subject.react['subject']):
+            dependency_one.react.trigger()
 
     def test_setter(self) -> None:
         subject = SubjectWithSetter()
@@ -236,4 +225,4 @@ class TestReactiveProperty:
         # dependency_one no longer being autowired should not cause the reactor to be called.
         with assert_not_reactor_called(subject):
             with assert_not_reactor_called(subject.react['subject']):
-                dependency.react.trigger()
+                dependency_one.react.trigger()

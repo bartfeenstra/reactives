@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import Iterator, overload, Any, ContextManager
+from typing import Iterator, Any
 
 from reactives import scope, Reactive
 from reactives.reactor import Reactor, ReactorController, ResolvableReactorController, resolve_reactor_controller, \
@@ -14,60 +14,29 @@ class _DummyReactive(Reactive):
         self.react = ReactorController()
 
 
-@overload
-def _assert_reactor(reactor: Reactor, sut: None = None) -> Iterator[Reactor]:
-    pass
-
-
-@overload
 def _assert_reactor(reactor: Reactor, sut: ResolvableReactorController) -> Iterator[None]:
-    pass
-
-
-def _assert_reactor(reactor: Reactor, sut: ResolvableReactorController | None = None) -> Iterator[Reactor | None]:
-    if sut is None:
-        yield reactor
-    else:
-        sut = resolve_reactor_controller(sut)
-        sut.react(reactor)
-        try:
-            yield None
-        finally:
-            sut.shutdown(reactor)
-
-
-@overload
-def assert_reactor_called(expected_call_count: ExpectedCallCount = 1) -> ContextManager[Reactor]:
-    pass
-
-
-@overload
-def assert_reactor_called(sut: ResolvableReactorController, expected_call_count: ExpectedCallCount = 1) -> ContextManager[None]:
-    pass
+    sut = resolve_reactor_controller(sut)
+    sut.react(reactor)
+    try:
+        yield None
+    finally:
+        sut.shutdown(reactor)
 
 
 # Ignore the decorator because Mypy falsely flags it as a type violation (https://github.com/python/mypy/issues/11373).
 @contextmanager  # type: ignore[misc]
-def assert_reactor_called(sut: ResolvableReactorController | None = None, expected_call_count: ExpectedCallCount = 1) -> Iterator[Reactor | None]:
-    reactor = AssertCallCountReactor(expected_call_count)
-    yield from _assert_reactor(reactor, sut)
+def assert_reactor_called(reactor_controller: ResolvableReactorController, expected_call_count: ExpectedCallCount = 1) -> Iterator[None]:
+    reactor_controller = resolve_reactor_controller(reactor_controller)
+    reactor = AssertCallCountReactor(reactor_controller, expected_call_count)
+    yield from _assert_reactor(reactor, reactor_controller)
     reactor.assert_call_count()
 
 
-@overload
-def assert_not_reactor_called() -> ContextManager[Reactor]:
-    pass
-
-
-@overload
-def assert_not_reactor_called(sut: ResolvableReactorController) -> ContextManager[None]:
-    pass
-
-
 # Ignore the decorator because Mypy falsely flags it as a type violation (https://github.com/python/mypy/issues/11373).
 @contextmanager  # type: ignore[misc]
-def assert_not_reactor_called(sut: ResolvableReactorController | None = None) -> Iterator[Reactor | None]:
-    yield from _assert_reactor(AssertCallCountReactor(0), sut)
+def assert_not_reactor_called(reactor_controller: ResolvableReactorController) -> Iterator[None]:
+    reactor_controller = resolve_reactor_controller(reactor_controller)
+    yield from _assert_reactor(AssertCallCountReactor(reactor_controller, 0), reactor_controller)
 
 
 @contextmanager
