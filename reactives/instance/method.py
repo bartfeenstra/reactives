@@ -26,6 +26,10 @@ class MethodReactorController(CallableReactorController):
     def __repr__(self) -> str:
         return f'<{self.__class__.__module__}.{self.__class__.__qualname__} object at {hex(id(self))} for the method "{self._callable_definition.callable.__name__}" of {self._instance.__class__.__module__}.{self._instance.__class__.__qualname__} at {hex(id(self._instance))}>'
 
+    def _on_trigger(self) -> None:
+        if self._callable_definition.on_trigger_call:
+            self._callable_definition.callable(self._instance)
+
 
 class _MethodDefinition(CallableDefinition[Concatenate[ReactiveInstanceT, ParamT], ReturnT], InstanceAttributeDefinition, Generic[ReactiveInstanceT, ParamT, ReturnT]):
     def __init__(

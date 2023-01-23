@@ -21,6 +21,16 @@ class Subject(ReactiveInstance):
             dependency()
 
 
+class SubjectWithOnTriggerCall(ReactiveInstance):
+    def __init__(self) -> None:
+        super().__init__()
+        self.on_trigger_calls = 0
+
+    @reactive_method(on_trigger_call=True)
+    def subject(self) -> None:
+        self.on_trigger_calls += 1
+
+
 class TestReactiveMethod:
     def test_wrapped_metadata_for_class_method(self) -> None:
         assert 'reactives.tests.instance.test_method' == Subject.subject.__module__
@@ -57,3 +67,8 @@ class TestReactiveMethod:
         # dependency() no longer being autowired should not cause the reactor to be called.
         with assert_not_reactor_called(subject):
             dependency.react.trigger()
+
+    def test_on_trigger_call(self) -> None:
+        subject = SubjectWithOnTriggerCall()
+        subject.react['subject'].react.trigger()
+        assert subject.on_trigger_calls == 1

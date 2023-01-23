@@ -12,6 +12,15 @@ def subject() -> None:
     pass
 
 
+_on_trigger_calls = 0
+
+
+@reactive_function(on_trigger_call=True)
+def subject_with_on_trigger_call() -> None:
+    global _on_trigger_calls
+    _on_trigger_calls += 1
+
+
 class TestReactiveFunction:
     def test_wrapped_metadata(self) -> None:
         assert 'reactives.tests.test_function' == subject.__module__
@@ -38,3 +47,11 @@ class TestReactiveFunction:
         # dependency() no longer being autowired should not cause the reactor to be called.
         with assert_not_reactor_called(subject):
             dependency.react.trigger()
+
+    def test_on_trigger_call(self) -> None:
+        global _on_trigger_calls
+
+        assert _on_trigger_calls == 0
+        subject_with_on_trigger_call.react.trigger()
+        assert _on_trigger_calls == 1
+        _on_trigger_calls = 0
