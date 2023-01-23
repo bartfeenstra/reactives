@@ -35,10 +35,6 @@ class CallableReactorController(ReactorController):
         copied._dependencies = self._dependencies
         return copied
 
-    def _on_trigger(self) -> None:
-        if self._callable_definition.on_trigger_call:
-            self._callable_definition.callable()
-
 
 class CallableDefinition(Generic[ParamT, ReturnT]):
     def __init__(self, _callable: Callable[ParamT, ReturnT], *args: Any, on_trigger_call: bool = False, **kwargs: Any):

@@ -11,6 +11,10 @@ class FunctionReactorController(CallableReactorController):
     def __repr__(self) -> str:
         return f'<{self.__class__.__module__}.{self.__class__.__qualname__} object at {hex(id(self))} for the function {self._callable_definition.callable.__module__}.{self._callable_definition.callable.__qualname__} at {hex(id(self._callable_definition.callable))}>'
 
+    def _on_trigger(self) -> None:
+        if self._callable_definition.on_trigger_call:
+            self._callable_definition.callable()
+
 
 class _FunctionDefinition(CallableDefinition[ParamT, ReturnT], Decorator, Reactive, Generic[ParamT, ReturnT]):
     def __init__(self, *args: Any, **kwargs: Any):

@@ -36,15 +36,3 @@ class TestCallableReactorController:
         sut = CallableReactorController(callable_definition)
         with assert_reactor_called(sut):
             sut.trigger()
-
-    def test_on_trigger_call(self) -> None:
-
-        called = False
-
-        def _callable() -> None:
-            nonlocal called
-            called = True
-        callable_definition = CallableDefinition(_callable, on_trigger_call=True)
-        sut = CallableReactorController(callable_definition)
-        sut.trigger()
-        assert called is True
